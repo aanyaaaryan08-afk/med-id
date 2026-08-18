@@ -4,23 +4,7 @@ import { Card, Badge } from '@/components/ui';
 import { LogoWordmark } from '@/components/Logo';
 import { patientExists, searchPatients, type PatientSearchResult } from '@/lib/patients';
 import { maskPhone } from '@/lib/otp';
-import {
-  Droplet,
-  AlertTriangle,
-  Pill,
-  Heart,
-  Phone,
-  Siren,
-  ArrowLeft,
-  ShieldAlert,
-  Stethoscope,
-  KeyRound,
-  Lock,
-  Fingerprint,
-  ArrowRight,
-  Search,
-  User,
-} from 'lucide-react';
+import { Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Phone, Siren, ArrowLeft, ShieldAlert, Stethoscope, KeyRound, Lock, Fingerprint, ArrowRight, Search, User } from 'lucide-react';
 
 const DEMO_DOCTOR_ID = 'DR-7421';
 const DEMO_DOCTOR_PASSWORD = 'med123';

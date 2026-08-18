@@ -3,24 +3,7 @@ import { LogoWordmark } from '@/components/Logo';
 import { DEMO_MED_ID } from '@/data';
 import { searchPatients, fetchPatientPersonalPhone, type PatientSearchResult } from '@/lib/patients';
 import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
-import {
-  ArrowRight,
-  Siren,
-  ShieldCheck,
-  Activity,
-  Clock,
-  Fingerprint,
-  Lock,
-  Stethoscope,
-  AlertTriangle,
-  UserCog,
-  UserPlus,
-  ArrowLeft,
-  Smartphone,
-  KeyRound,
-  Droplet,
-  Search,
-} from 'lucide-react';
+import { ArrowRight, Siren, ShieldCheck, Activity, Clock, Fingerprint, Lock, Stethoscope, TriangleAlert as AlertTriangle, UserCog, UserPlus, ArrowLeft, Smartphone, KeyRound, Droplet, Search } from 'lucide-react';
 
 type LoginStep = 'medId' | 'searchResults' | 'otp' | 'verified';
 

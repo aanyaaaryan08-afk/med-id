@@ -1,15 +1,6 @@
 import { useState } from 'react';
 import { LogoWordmark } from '@/components/Logo';
-import {
-  UserCog,
-  KeyRound,
-  Lock,
-  ArrowRight,
-  ArrowLeft,
-  AlertTriangle,
-  Fingerprint,
-  ShieldCheck,
-} from 'lucide-react';
+import { UserCog, KeyRound, Lock, ArrowRight, ArrowLeft, TriangleAlert as AlertTriangle, Fingerprint, ShieldCheck } from 'lucide-react';
 
 const DEMO_DOCTOR_ID = 'DR-7421';
 const DEMO_DOCTOR_PASSWORD = 'med123';

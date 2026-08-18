@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import type { Allergy, MedicalCondition, Surgery, Test } from '@/types';
 import { Card, Badge } from '@/components/ui';
-import {
-  FolderHeart,
-  AlertTriangle,
-  Heart,
-  Stethoscope,
-  FlaskConical,
-} from 'lucide-react';
+import { FolderHeart, TriangleAlert as AlertTriangle, Heart, Stethoscope, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type TabId = 'allergies' | 'conditions' | 'surgeries' | 'tests';

@@ -1,6 +1,6 @@
 import { type Medication } from '@/types';
 import { Card, Badge, SectionTitle } from '@/components/ui';
-import { Pill, CheckCircle2, XCircle, Activity, Calendar, User, Clock } from 'lucide-react';
+import { Pill, CircleCheck as CheckCircle2, Circle as XCircle, Activity, Calendar, User, Clock } from 'lucide-react';
 
 function MedCard({ m }: { m: Medication }) {
   const statusTone = m.status === 'Current' ? 'green' : m.status === 'Completed' ? 'slate' : 'amber';

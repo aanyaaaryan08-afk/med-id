@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import { DEMO_MED_ID } from '@/data';
 import { Card } from '@/components/ui';
-import {
-  UserCog,
-  Fingerprint,
-  ShieldCheck,
-  Lock,
-  ArrowRight,
-  AlertTriangle,
-  Stethoscope,
-  KeyRound,
-} from 'lucide-react';
+import { UserCog, Fingerprint, ShieldCheck, Lock, ArrowRight, TriangleAlert as AlertTriangle, Stethoscope, KeyRound } from 'lucide-react';
 
 export function DoctorAccess({ onAccess }: { onAccess: (id: string) => void }) {
   const [doctorId, setDoctorId] = useState('');

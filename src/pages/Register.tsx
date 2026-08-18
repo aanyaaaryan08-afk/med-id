@@ -1,25 +1,7 @@
 import { useState } from 'react';
 import { LogoWordmark } from '@/components/Logo';
 import { createPatient, type RegistrationData } from '@/lib/patients';
-import {
-  ArrowRight,
-  ArrowLeft,
-  User,
-  Calendar,
-  Fingerprint,
-  Droplet,
-  AlertTriangle,
-  Pill,
-  Heart,
-  Stethoscope,
-  Phone,
-  Smartphone,
-  ShieldAlert,
-  CheckCircle2,
-  Copy,
-  Check,
-  UserPlus,
-} from 'lucide-react';
+import { ArrowRight, ArrowLeft, User, Calendar, Fingerprint, Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Stethoscope, Phone, Smartphone, ShieldAlert, CircleCheck as CheckCircle2, Copy, Check, UserPlus } from 'lucide-react';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 

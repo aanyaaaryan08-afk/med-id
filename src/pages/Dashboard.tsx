@@ -1,21 +1,6 @@
 import { type Patient, type Consultation, type Allergy, type MedicalCondition, type Medication } from '@/types';
 import { Card, Badge, SectionTitle } from '@/components/ui';
-import {
-  Droplet,
-  AlertTriangle,
-  Pill,
-  Stethoscope,
-  Phone,
-  Calendar,
-  Heart,
-  User,
-  Mail,
-  MapPin,
-  Activity,
-  ArrowUpRight,
-  Fingerprint,
-  ShieldCheck,
-} from 'lucide-react';
+import { Droplet, TriangleAlert as AlertTriangle, Pill, Stethoscope, Phone, Calendar, Heart, User, Mail, MapPin, Activity, ArrowUpRight, Fingerprint, ShieldCheck } from 'lucide-react';
 import { type PageId } from '@/types';
 import { maskPhone } from '@/lib/otp';
 
