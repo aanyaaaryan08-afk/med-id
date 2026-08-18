@@ -6,29 +6,7 @@ import { fetchConsultations, insertConsultation } from '@/lib/consultations';
 import { categorizeConsultation, searchPatients, fetchPatient, fetchPatientPersonalPhone, type PatientSearchResult, type PatientRecords } from '@/lib/patients';
 import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
 import type { Consultation } from '@/types';
-import {
-  Search,
-  Plus,
-  X,
-  Stethoscope,
-  Calendar,
-  Pill,
-  Droplet,
-  Heart,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Fingerprint,
-  LogOut,
-  UserCog,
-  Siren,
-  Menu,
-  ArrowLeft,
-  Smartphone,
-  KeyRound,
-  ShieldCheck,
-} from 'lucide-react';
+import { Search, Plus, X, Stethoscope, Calendar, Pill, Droplet, Heart, User, Phone, Mail, MapPin, Fingerprint, LogOut, UserCog, Siren, Menu, ArrowLeft, Smartphone, KeyRound, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2 } from 'lucide-react';
 
 const emptyForm = {
   doctor: '',
@@ -399,6 +377,33 @@ export function DoctorDashboard({
   }
 
   // Patient record view (after OTP verified)
+  if (accessStep === 'record' && selectedPatient && !patientRecords && !loadingRecord) {
+    return (
+      <div className="min-h-screen bg-ink-50 flex flex-col">
+        <div className="px-6 sm:px-8 py-5 flex items-center justify-between">
+          <LogoWordmark />
+          <button onClick={handleBackToSearch} className="btn-ghost text-sm text-ink-600 hover:bg-ink-100">
+            <ArrowLeft size={16} /> Back to Search
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center px-6 py-8">
+          <div className="w-full max-w-md text-center animate-scale-in">
+            <div className="inline-grid place-items-center h-16 w-16 rounded-2xl bg-red-100 text-red-600 shadow-soft mb-4">
+              <AlertTriangle size={28} />
+            </div>
+            <h1 className="font-display text-xl font-bold text-ink-900">Unable to Load Patient Record</h1>
+            <p className="text-ink-500 text-sm mt-2">
+              The medical record for {selectedPatient.name} ({selectedPatient.medId}) could not be loaded. Please try again.
+            </p>
+            <button onClick={() => loadPatientRecord(selectedPatient.medId)} className="btn-primary mt-6">
+              <ShieldCheck size={18} /> Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (accessStep === 'record' && selectedPatient && patientRecords) {
     const p = patientRecords.patient;
     const initials = p.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
