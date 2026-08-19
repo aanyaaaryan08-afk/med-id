@@ -46,25 +46,25 @@ export function Dashboard({
   const lastCon = latestConsultation;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Hero card */}
       <Card className="overflow-hidden p-0">
         <div className="flex flex-col sm:flex-row">
-          <div className="relative bg-gradient-to-br from-teal-600 to-brand-700 p-6 sm:p-8 text-white sm:w-2/5">
+          <div className="relative bg-gradient-to-br from-teal-600 to-brand-700 p-5 sm:p-8 text-white sm:w-2/5">
             <div className="absolute inset-0 opacity-20" style={{
               backgroundImage: 'radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4) 0, transparent 40%)',
             }} />
             <div className="relative">
-              <div className="flex items-center gap-4">
-                <div className="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur-sm grid place-items-center text-2xl font-bold border border-white/20">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-white/15 backdrop-blur-sm grid place-items-center text-xl sm:text-2xl font-bold border border-white/20 shrink-0">
                   {initials}
                 </div>
-                <div>
-                  <h1 className="font-display text-2xl font-extrabold leading-tight">{p.name}</h1>
-                  <p className="text-teal-50/90 text-sm font-mono">{p.medId}</p>
+                <div className="min-w-0">
+                  <h1 className="font-display text-xl sm:text-2xl font-extrabold leading-tight truncate">{p.name}</h1>
+                  <p className="text-teal-50/90 text-xs sm:text-sm font-mono truncate">{p.medId}</p>
                 </div>
               </div>
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-4 sm:mt-6 flex flex-wrap gap-2">
                 <span className="chip bg-white/15 backdrop-blur-sm border border-white/10">
                   <Droplet size={13} /> {p.bloodGroup}
                 </span>
@@ -80,7 +80,7 @@ export function Dashboard({
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+          <div className="p-5 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
             {p.phone && <InfoRow icon={<Phone size={16} />} label="Phone" value={maskPhone(p.phone)} />}
             {p.email && <InfoRow icon={<Mail size={16} />} label="Email" value={p.email} />}
             {p.address && <InfoRow icon={<MapPin size={16} />} label="Address" value={p.address} />}
@@ -92,7 +92,7 @@ export function Dashboard({
       </Card>
 
       {/* Critical alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card hover className="border-red-100 bg-red-50/40">
           <div className="flex items-center gap-2 text-red-600 mb-3">
             <AlertTriangle size={18} />
@@ -219,7 +219,7 @@ export function Dashboard({
         </Card>
       </div>
 
-      <p className="text-center text-xs text-ink-400 pt-2">
+      <p className="text-center text-xs text-ink-400 pt-2 px-4">
         Prototype using fictional data — MED-ID is a science-exhibition demonstration, not a real medical service.
       </p>
     </div>

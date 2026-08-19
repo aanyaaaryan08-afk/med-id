@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { LogoWordmark } from '@/components/Logo';
 import { createPatient, type RegistrationData } from '@/lib/patients';
-import { ArrowRight, ArrowLeft, User, Calendar, Fingerprint, Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Stethoscope, Phone, Smartphone, ShieldAlert, CircleCheck as CheckCircle2, Copy, Check, UserPlus } from 'lucide-react';
+import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
+import { ArrowRight, ArrowLeft, User, Calendar, Fingerprint, Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Stethoscope, Phone, Smartphone, ShieldAlert, CircleCheck as CheckCircle2, Copy, Check, UserPlus, KeyRound, ShieldCheck } from 'lucide-react';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -22,11 +23,14 @@ const emptyForm: RegistrationData = {
 };
 
 const steps = [
-  { id: 0, label: 'Personal', icon: User },
-  { id: 1, label: 'Medical', icon: Heart },
-  { id: 2, label: 'Emergency', icon: ShieldAlert },
-  { id: 3, label: 'Confirm', icon: CheckCircle2 },
+  { id: 0, label: 'Verify', icon: Smartphone },
+  { id: 1, label: 'Personal', icon: User },
+  { id: 2, label: 'Medical', icon: Heart },
+  { id: 3, label: 'Emergency', icon: ShieldAlert },
+  { id: 4, label: 'Confirm', icon: CheckCircle2 },
 ];
+
+type VerifySubStep = 'enterPhone' | 'otp' | 'verified';
 
 export function Register({
   onDone,
@@ -42,25 +46,111 @@ export function Register({
   const [createdMedId, setCreatedMedId] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Phone verification state
+  const [verifySubStep, setVerifySubStep] = useState<VerifySubStep>('enterPhone');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoCode, setDemoCode] = useState('');
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  const startCountdown = () => {
+    setResendCountdown(30);
+    const interval = setInterval(() => {
+      setResendCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const sendOtpToPhone = async (phoneNumber: string) => {
+    setSendLoading(true);
+    setPhoneError('');
+    setOtpError('');
+    try {
+      const result = await requestOtp('', phoneNumber, 'registration');
+      if (!result.success) {
+        setPhoneError(result.error || 'Failed to send OTP.');
+        setSendLoading(false);
+        return;
+      }
+      setDemoMode(result.demoMode);
+      setDemoCode(result.demoCode || '');
+      setMaskedPhone(maskPhone(phoneNumber));
+      setVerifySubStep('otp');
+      startCountdown();
+    } catch {
+      setPhoneError('Something went wrong. Please try again.');
+    }
+    setSendLoading(false);
+  };
+
+  const handlePhoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const phone = phoneInput.replace(/\D/g, '');
+    if (!phone) {
+      setPhoneError('Please enter your phone number.');
+      return;
+    }
+    if (!/^\d{10}$/.test(phone)) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+      return;
+    }
+    setPhoneInput(phone);
+    sendOtpToPhone(phone);
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || !phoneInput) return;
+    setOtp('');
+    setOtpError('');
+    await sendOtpToPhone(phoneInput);
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp.trim()) {
+      setOtpError('Please enter the OTP code.');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError('');
+    const result = await verifyOtp('', otp.trim(), 'registration');
+    if (result.verified) {
+      setVerifySubStep('verified');
+      update('personalPhone', phoneInput);
+    } else {
+      setOtpError(result.error || 'Invalid OTP. Please try again.');
+    }
+    setOtpLoading(false);
+  };
+
   const update = (field: keyof RegistrationData, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: '' }));
   };
 
-  const validateStep0 = () => {
+  const validateStep1 = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = 'Full name is required';
     if (!form.dob.trim()) e.dob = 'Date of birth is required';
     if (!form.aadhaar.trim()) e.aadhaar = 'Demo Aadhaar number is required';
     else if (!/^\d{12}$/.test(form.aadhaar.trim())) e.aadhaar = 'Aadhaar must be exactly 12 digits';
     if (!form.bloodGroup) e.bloodGroup = 'Blood group is required';
-    if (!form.personalPhone.trim()) e.personalPhone = 'Personal phone number is required';
-    else if (!/^\d{10}$/.test(form.personalPhone.trim())) e.personalPhone = 'Phone must be exactly 10 digits';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const validateStep2 = () => {
+  const validateStep3 = () => {
     const e: Record<string, string> = {};
     if (!form.emergencyContactName.trim()) e.emergencyContactName = 'Emergency contact name is required';
     if (!form.emergencyContactPhone.trim()) e.emergencyContactPhone = 'Emergency contact phone is required';
@@ -70,14 +160,14 @@ export function Register({
   };
 
   const next = () => {
-    if (step === 0 && !validateStep0()) return;
-    if (step === 2 && !validateStep2()) return;
-    setStep((s) => Math.min(s + 1, 3));
+    if (step === 1 && !validateStep1()) return;
+    if (step === 3 && !validateStep3()) return;
+    setStep((s) => Math.min(s + 1, 4));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const prev = () => {
-    setStep((s) => Math.max(s - 1, 0));
+    setStep((s) => Math.max(s - 1, 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -86,10 +176,10 @@ export function Register({
     try {
       const medId = await createPatient(form);
       setCreatedMedId(medId);
-      setStep(4);
+      setStep(5);
     } catch {
       setErrors({ form: 'Failed to create account. Please try again.' });
-      setStep(3);
+      setStep(4);
     } finally {
       setSaving(false);
     }
@@ -106,33 +196,33 @@ export function Register({
   };
 
   // Confirmation screen
-  if (step === 4) {
+  if (step === 5) {
     return (
       <div className="min-h-screen flex flex-col bg-ink-50">
-        <div className="px-6 sm:px-8 py-5 flex items-center justify-between">
+        <div className="px-4 sm:px-8 py-5 flex items-center justify-between">
           <LogoWordmark />
           <button onClick={onBack} className="btn-ghost text-sm text-ink-600 hover:bg-ink-100">
             <ArrowLeft size={16} /> Home
           </button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center px-6 py-8">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
           <div className="w-full max-w-md text-center animate-scale-in">
             <div className="inline-grid place-items-center h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-card-hover mb-6">
               <CheckCircle2 size={40} />
             </div>
-            <h1 className="font-display text-3xl font-extrabold text-ink-900">Your MED-ID has been created</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-ink-900">Your MED-ID has been created</h1>
             <p className="text-ink-500 text-sm mt-3">
               Save this ID — you'll need it to access your medical profile from the Patient Portal.
             </p>
 
-            <div className="mt-8 rounded-2xl bg-gradient-to-br from-teal-600 to-brand-700 p-8 text-white shadow-card-hover">
+            <div className="mt-8 rounded-2xl bg-gradient-to-br from-teal-600 to-brand-700 p-6 sm:p-8 text-white shadow-card-hover">
               <p className="text-xs font-bold uppercase tracking-wider text-teal-50/80 mb-2">Your MED-ID</p>
               <div className="flex items-center justify-center gap-3">
-                <p className="font-mono text-3xl sm:text-4xl font-extrabold tracking-wider">{createdMedId}</p>
+                <p className="font-mono text-2xl sm:text-4xl font-extrabold tracking-wider">{createdMedId}</p>
                 <button
                   onClick={copyMedId}
-                  className="p-2 rounded-lg bg-white/15 backdrop-blur-sm hover:bg-white/25 transition-colors"
+                  className="p-2 rounded-lg bg-white/15 backdrop-blur-sm hover:bg-white/25 transition-colors shrink-0"
                   aria-label="Copy MED-ID"
                 >
                   {copied ? <Check size={18} /> : <Copy size={18} />}
@@ -163,14 +253,14 @@ export function Register({
   return (
     <div className="min-h-screen flex flex-col bg-ink-50">
       {/* Top bar */}
-      <div className="px-6 sm:px-8 py-5 flex items-center justify-between">
+      <div className="px-4 sm:px-8 py-5 flex items-center justify-between">
         <LogoWordmark />
         <button onClick={onBack} className="btn-ghost text-sm text-ink-600 hover:bg-ink-100">
           <ArrowLeft size={16} /> Back to Home
         </button>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-8">
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
         <div className="w-full max-w-lg">
           {/* Header */}
           <div className="text-center mb-6">
@@ -182,7 +272,7 @@ export function Register({
           </div>
 
           {/* Step indicator */}
-          <div className="flex items-center justify-between mb-6 px-2">
+          <div className="flex items-center justify-between mb-6 px-1 sm:px-2">
             {steps.map((s, i) => {
               const Icon = s.icon;
               const isActive = step === i;
@@ -191,7 +281,7 @@ export function Register({
                 <div key={s.id} className="flex items-center flex-1 last:flex-none">
                   <div className="flex flex-col items-center gap-1.5">
                     <div
-                      className={`grid place-items-center h-9 w-9 rounded-full text-sm font-bold transition-all ${
+                      className={`grid place-items-center h-8 w-8 sm:h-9 sm:w-9 rounded-full text-sm font-bold transition-all ${
                         isActive
                           ? 'bg-teal-600 text-white shadow-soft'
                           : isComplete
@@ -199,14 +289,14 @@ export function Register({
                           : 'bg-ink-100 text-ink-400'
                       }`}
                     >
-                      <Icon size={16} />
+                      <Icon size={15} />
                     </div>
-                    <span className={`text-[10px] font-semibold ${isActive ? 'text-teal-700' : 'text-ink-400'}`}>
+                    <span className={`text-[9px] sm:text-[10px] font-semibold ${isActive ? 'text-teal-700' : 'text-ink-400'}`}>
                       {s.label}
                     </span>
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-2 rounded ${isComplete ? 'bg-teal-400' : 'bg-ink-200'}`} />
+                    <div className={`flex-1 h-0.5 mx-1.5 sm:mx-2 rounded ${isComplete ? 'bg-teal-400' : 'bg-ink-200'}`} />
                   )}
                 </div>
               );
@@ -214,9 +304,160 @@ export function Register({
           </div>
 
           {/* Form card */}
-          <div className="card p-6 sm:p-8">
-            {step === 0 && (
+          <div className="card p-5 sm:p-8">
+            {/* Step 0: Phone verification */}
+            {step === 0 && verifySubStep === 'enterPhone' && (
               <div className="space-y-4 animate-fade-in-fast">
+                <div className="text-center mb-2">
+                  <div className="inline-grid place-items-center h-12 w-12 rounded-2xl bg-teal-50 text-teal-600 mb-3">
+                    <Smartphone size={24} />
+                  </div>
+                  <h2 className="font-display font-bold text-lg text-ink-900">Verify Your Phone Number</h2>
+                  <p className="text-sm text-ink-500 mt-1">
+                    Enter your mobile number. We'll send a verification code to confirm it.
+                  </p>
+                </div>
+
+                <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                  <Field label="Mobile Number" error={phoneError} hint="10-digit Indian mobile number. This will be your OTP phone for future logins.">
+                    <div className="relative">
+                      <Smartphone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                      <input
+                        className="input pl-11 font-mono tracking-wider"
+                        value={phoneInput}
+                        onChange={(e) => { setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10)); if (phoneError) setPhoneError(''); }}
+                        placeholder="10-digit mobile number"
+                        inputMode="numeric"
+                        maxLength={10}
+                        autoFocus
+                      />
+                    </div>
+                  </Field>
+
+                  <button type="submit" disabled={sendLoading} className="btn-primary w-full">
+                    {sendLoading ? (
+                      <>
+                        <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Sending OTP…
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound size={18} /> Send Verification Code
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {step === 0 && verifySubStep === 'otp' && (
+              <div className="space-y-4 animate-fade-in-fast">
+                <div className="text-center mb-2">
+                  <div className="inline-grid place-items-center h-12 w-12 rounded-2xl bg-teal-50 text-teal-600 mb-3">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <h2 className="font-display font-bold text-lg text-ink-900">Verify Your Phone</h2>
+                  <p className="text-sm text-ink-500 mt-1">
+                    A verification code has been sent to your phone number.
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-teal-50 border border-teal-100 p-3 flex items-center gap-2">
+                  <Smartphone size={16} className="text-teal-600 shrink-0" />
+                  <p className="text-sm font-semibold text-teal-800">OTP sent to {maskedPhone}</p>
+                </div>
+
+                {demoMode && demoCode && (
+                  <div className="rounded-xl bg-amber-50 border-2 border-amber-300 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                      <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">DEMO MODE — SMS NOT ENABLED</p>
+                    </div>
+                    <p className="text-sm text-amber-700">
+                      Demo OTP: <span className="font-mono font-bold text-lg tracking-[0.2em] text-amber-900">{demoCode}</span>
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Enter this code to verify. Real SMS will be sent when an SMS provider is configured.
+                    </p>
+                  </div>
+                )}
+
+                <form onSubmit={handleOtpSubmit} className="space-y-4">
+                  <Field label="Enter OTP Code" error={otpError}>
+                    <div className="relative">
+                      <KeyRound size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                      <input
+                        type="text"
+                        value={otp}
+                        onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); if (otpError) setOtpError(''); }}
+                        placeholder="6-digit code"
+                        className="input pl-11 font-mono tracking-[0.3em] text-center text-lg"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        autoFocus
+                      />
+                    </div>
+                  </Field>
+
+                  <button type="submit" disabled={otpLoading} className="btn-primary w-full">
+                    {otpLoading ? (
+                      <>
+                        <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Verifying…
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={18} /> Verify & Continue
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <button
+                      type="button"
+                      onClick={() => { setVerifySubStep('enterPhone'); setOtp(''); setOtpError(''); }}
+                      className="font-semibold text-ink-500 hover:text-ink-700"
+                    >
+                      Change number
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendCountdown > 0 || sendLoading}
+                      className={`font-semibold ${resendCountdown > 0 ? 'text-ink-400 cursor-not-allowed' : 'text-teal-700 hover:text-teal-900'}`}
+                    >
+                      {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend OTP'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {step === 0 && verifySubStep === 'verified' && (
+              <div className="space-y-4 animate-fade-in-fast text-center py-6">
+                <div className="inline-grid place-items-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-soft mb-3 animate-scale-in">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h2 className="font-display font-bold text-lg text-ink-900">Phone Verified!</h2>
+                <p className="text-sm text-ink-500">
+                  Your number <span className="font-mono font-semibold">{maskPhone(phoneInput)}</span> has been verified.
+                  You can now continue with your registration.
+                </p>
+                <button onClick={() => { setStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn-primary w-full mt-4">
+                  Continue <ArrowRight size={18} />
+                </button>
+              </div>
+            )}
+
+            {/* Step 1: Personal */}
+            {step === 1 && (
+              <div className="space-y-4 animate-fade-in-fast">
+                <div className="rounded-xl bg-teal-50 border border-teal-100 p-3 flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <p className="text-sm text-teal-800 font-semibold">Phone verified: {maskPhone(form.personalPhone)}</p>
+                </div>
+
                 <Field label="Full Name" error={errors.name}>
                   <div className="relative">
                     <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -257,24 +498,11 @@ export function Register({
                     </select>
                   </div>
                 </Field>
-
-                <Field label="Personal / OTP Phone Number" error={errors.personalPhone} hint="10-digit Indian mobile number. OTPs for account access will be sent here.">
-                  <div className="relative">
-                    <Smartphone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-                    <input
-                      className="input pl-11 font-mono tracking-wider"
-                      value={form.personalPhone}
-                      onChange={(e) => update('personalPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="10-digit mobile number"
-                      inputMode="numeric"
-                      maxLength={10}
-                    />
-                  </div>
-                </Field>
               </div>
             )}
 
-            {step === 1 && (
+            {/* Step 2: Medical */}
+            {step === 2 && (
               <div className="space-y-4 animate-fade-in-fast">
                 <Field label="Known Allergies" hint="Comma-separated, e.g. Penicillin, Peanuts">
                   <div className="relative">
@@ -306,7 +534,8 @@ export function Register({
               </div>
             )}
 
-            {step === 2 && (
+            {/* Step 3: Emergency */}
+            {step === 3 && (
               <div className="space-y-4 animate-fade-in-fast">
                 <Field label="Emergency Contact Name" error={errors.emergencyContactName}>
                   <div className="relative">
@@ -342,7 +571,8 @@ export function Register({
               </div>
             )}
 
-            {step === 3 && (
+            {/* Step 4: Confirm */}
+            {step === 4 && (
               <div className="space-y-4 animate-fade-in-fast">
                 <h3 className="font-display font-bold text-ink-900 mb-2">Review your information</h3>
                 <div className="space-y-3 text-sm">
@@ -369,33 +599,35 @@ export function Register({
               </div>
             )}
 
-            {/* Navigation buttons */}
-            <div className="flex gap-3 mt-6 pt-5 border-t border-ink-100">
-              {step > 0 && step < 4 && (
-                <button onClick={prev} className="btn-secondary flex-1">
-                  <ArrowLeft size={18} /> Back
-                </button>
-              )}
-              {step < 3 && (
-                <button onClick={next} className="btn-primary flex-1">
-                  Next <ArrowRight size={18} />
-                </button>
-              )}
-              {step === 3 && (
-                <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
-                  {saving ? (
-                    <>
-                      <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Creating…
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={18} /> Create Account
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
+            {/* Navigation buttons — hidden during phone verification (step 0) */}
+            {step > 0 && step < 5 && (
+              <div className="flex gap-3 mt-6 pt-5 border-t border-ink-100">
+                {step > 1 && (
+                  <button onClick={prev} className="btn-secondary flex-1">
+                    <ArrowLeft size={18} /> Back
+                  </button>
+                )}
+                {step < 4 && (
+                  <button onClick={next} className="btn-primary flex-1">
+                    Next <ArrowRight size={18} />
+                  </button>
+                )}
+                {step === 4 && (
+                  <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1">
+                    {saving ? (
+                      <>
+                        <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={18} /> Create Account
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <p className="text-center text-xs text-ink-400 mt-4">

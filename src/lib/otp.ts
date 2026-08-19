@@ -55,6 +55,11 @@ export async function requestOtp(
       return { success: false, demoMode: true, error: 'Supabase not configured' };
     }
 
+    const body: Record<string, string> = { phone, purpose };
+    if (patientMedId) {
+      body.patient_med_id = patientMedId;
+    }
+
     const res = await fetch(`${baseUrl}/functions/v1/send-otp`, {
       method: 'POST',
       headers: {
@@ -62,7 +67,7 @@ export async function requestOtp(
         Authorization: `Bearer ${anonKey}`,
         apikey: anonKey,
       },
-      body: JSON.stringify({ patient_med_id: patientMedId, phone, purpose }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
@@ -110,6 +115,11 @@ export async function verifyOtp(
       return { verified: false, error: 'Supabase not configured' };
     }
 
+    const body: Record<string, string> = { code, purpose };
+    if (patientMedId) {
+      body.patient_med_id = patientMedId;
+    }
+
     const res = await fetch(`${baseUrl}/functions/v1/verify-otp`, {
       method: 'POST',
       headers: {
@@ -117,7 +127,7 @@ export async function verifyOtp(
         Authorization: `Bearer ${anonKey}`,
         apikey: anonKey,
       },
-      body: JSON.stringify({ patient_med_id: patientMedId, code, purpose }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();

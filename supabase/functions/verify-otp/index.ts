@@ -12,11 +12,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { patient_med_id, code, purpose } = await req.json();
+    const { patient_med_id, code, purpose, phone } = await req.json();
 
-    if (!patient_med_id || !code) {
+    const otpPurpose = purpose || "patient_access";
+    // For registration, use phone as the lookup key since there's no patient_med_id yet
+    const lookupKey = patient_med_id || (otpPurpose === "registration" ? phone : null);
+
+    if (!lookupKey || !code) {
       return new Response(
-        JSON.stringify({ error: "patient_med_id and code are required" }),
+        JSON.stringify({ error: "patient_med_id (or phone for registration) and code are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -24,12 +28,12 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Fetch the latest unused, unverified OTP for this patient
+    // Fetch the latest unused, unverified OTP for this key
     const res = await fetch(
       `${supabaseUrl}/rest/v1/otp_codes?patient_med_id=eq.${encodeURIComponent(
-        patient_med_id
+        lookupKey
       )}&code=eq.${encodeURIComponent(code)}${
-        purpose ? `&purpose=eq.${encodeURIComponent(purpose)}` : ""
+        purpose ? `&purpose=eq.${encodeURIComponent(otpPurpose)}` : ""
       }&consumed=eq.false&verified=eq.false&order=created_at.desc&limit=1`,
       {
         headers: {

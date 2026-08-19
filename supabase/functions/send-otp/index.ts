@@ -18,9 +18,13 @@ Deno.serve(async (req: Request) => {
   try {
     const { patient_med_id, phone, purpose } = await req.json();
 
-    if (!patient_med_id || !phone) {
+    const otpPurpose = purpose || "patient_access";
+    // For registration, there's no patient_med_id yet — use phone as the lookup key
+    const lookupKey = patient_med_id || (otpPurpose === "registration" ? phone : null);
+
+    if (!lookupKey || !phone) {
       return new Response(
-        JSON.stringify({ error: "patient_med_id and phone are required" }),
+        JSON.stringify({ error: "patient_med_id (or phone for registration) and phone are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -30,7 +34,6 @@ Deno.serve(async (req: Request) => {
     const twoFactorApi = Deno.env.get("TWO_FACTOR_API");
 
     const code = genOtp();
-    const otpPurpose = purpose || "patient_access";
 
     // Insert OTP record into the database
     const insertRes = await fetch(`${supabaseUrl}/rest/v1/otp_codes`, {
@@ -42,7 +45,7 @@ Deno.serve(async (req: Request) => {
         Prefer: "return=representation",
       },
       body: JSON.stringify({
-        patient_med_id,
+        patient_med_id: lookupKey,
         code,
         purpose: otpPurpose,
         phone_used: phone,

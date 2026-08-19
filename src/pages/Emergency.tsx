@@ -3,7 +3,6 @@ import type { Patient, Allergy, MedicalCondition, Medication, Surgery } from '@/
 import { Card, Badge } from '@/components/ui';
 import { LogoWordmark } from '@/components/Logo';
 import { patientExists, searchPatients, type PatientSearchResult } from '@/lib/patients';
-import { maskPhone } from '@/lib/otp';
 import { Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Phone, Siren, ArrowLeft, ShieldAlert, Stethoscope, KeyRound, Lock, Fingerprint, ArrowRight, Search, User } from 'lucide-react';
 
 const DEMO_DOCTOR_ID = 'DR-7421';
@@ -93,7 +92,7 @@ export function EmergencyPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:gap-x-8">
           <EmergencyRow icon={<Droplet size={18} />} label="Blood Group" danger>
             <p className="text-2xl font-extrabold text-red-600">{p.bloodGroup}</p>
           </EmergencyRow>
@@ -151,7 +150,7 @@ export function EmergencyPage({
             <p className="text-sm font-bold text-ink-800">{p.emergencyContact.name || 'Not provided'}</p>
             <p className="text-sm text-ink-600">
               {p.emergencyContact.relation && `${p.emergencyContact.relation} · `}
-              {p.emergencyContact.phone ? maskPhone(p.emergencyContact.phone) : 'Not provided'}
+              {p.emergencyContact.phone || 'Not provided'}
             </p>
           </EmergencyRow>
         </div>
@@ -189,7 +188,7 @@ export function EmergencyMode({
     { label: 'Current Medications', value: currentMeds.length > 0 ? currentMeds.map((m) => m.name).join(', ') : 'None' },
     { label: 'Major Conditions', value: conditions.length > 0 ? conditions.map((c) => c.name).join(', ') : 'None' },
     ...(recentSurgery ? [{ label: 'Recent Surgery', value: `${recentSurgery.name} (${recentSurgery.date})` }] : []),
-    { label: 'Emergency Contact', value: `${p.emergencyContact.name || 'Not provided'} — ${p.emergencyContact.phone ? maskPhone(p.emergencyContact.phone) : 'Not provided'}`, danger: true },
+    { label: 'Emergency Contact', value: `${p.emergencyContact.name || 'Not provided'} — ${p.emergencyContact.phone || 'Not provided'}`, danger: true },
   ];
 
   return (
