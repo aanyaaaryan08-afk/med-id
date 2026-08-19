@@ -105,7 +105,8 @@ export async function requestOtp(
 export async function verifyOtp(
   patientMedId: string,
   code: string,
-  purpose: string = 'patient_access'
+  purpose: string = 'patient_access',
+  phone?: string
 ): Promise<{ verified: boolean; error?: string }> {
   try {
     const baseUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL;
@@ -118,6 +119,9 @@ export async function verifyOtp(
     const body: Record<string, string> = { code, purpose };
     if (patientMedId) {
       body.patient_med_id = patientMedId;
+    }
+    if (phone) {
+      body.phone = phone;
     }
 
     const res = await fetch(`${baseUrl}/functions/v1/verify-otp`, {

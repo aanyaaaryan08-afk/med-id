@@ -119,17 +119,17 @@ export function Register({
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp.trim()) {
-      setOtpError('Please enter the OTP code.');
+      setOtpError('Please enter the OTP sent to your phone number.');
       return;
     }
     setOtpLoading(true);
     setOtpError('');
-    const result = await verifyOtp('', otp.trim(), 'registration');
+    const result = await verifyOtp('', otp.trim(), 'registration', phoneInput);
     if (result.verified) {
       setVerifySubStep('verified');
       update('personalPhone', phoneInput);
     } else {
-      setOtpError(result.error || 'Invalid OTP. Please try again.');
+      setOtpError(result.error || 'Incorrect OTP. Please try again.');
     }
     setOtpLoading(false);
   };

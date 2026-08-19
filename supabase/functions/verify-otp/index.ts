@@ -19,8 +19,11 @@ Deno.serve(async (req: Request) => {
     const lookupKey = patient_med_id || (otpPurpose === "registration" ? phone : null);
 
     if (!lookupKey || !code) {
+      const msg = otpPurpose === "registration"
+        ? "Please enter the OTP sent to your phone number."
+        : "patient_med_id and code are required";
       return new Response(
-        JSON.stringify({ error: "patient_med_id (or phone for registration) and code are required" }),
+        JSON.stringify({ verified: false, error: msg }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -47,19 +50,31 @@ Deno.serve(async (req: Request) => {
     const data = await res.json();
 
     if (!data || data.length === 0) {
+      const msg = otpPurpose === "registration"
+        ? "Incorrect OTP. Please try again."
+        : "Invalid OTP. Please check and try again.";
       return new Response(
-        JSON.stringify({ verified: false, error: "Invalid OTP. Please check and try again." }),
+        JSON.stringify({ verified: false, error: msg }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const otpRecord = data[0];
+
+    // For registration, verify the OTP belongs to the exact phone number provided
+    if (otpPurpose === "registration" && phone && otpRecord.phone_used && otpRecord.phone_used !== phone) {
+      return new Response(
+        JSON.stringify({ verified: false, error: "Incorrect OTP. Please try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const now = new Date();
     const expiresAt = new Date(otpRecord.expires_at);
 
     if (now > expiresAt) {
       return new Response(
-        JSON.stringify({ verified: false, error: "This OTP has expired. Please request a new one." }),
+        JSON.stringify({ verified: false, error: "This OTP has expired. Please request a new OTP." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -78,8 +93,11 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
+    const successMsg = otpPurpose === "registration"
+      ? "Phone number verified successfully."
+      : "OTP verified successfully.";
     return new Response(
-      JSON.stringify({ verified: true, message: "OTP verified successfully." }),
+      JSON.stringify({ verified: true, message: successMsg }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch {
