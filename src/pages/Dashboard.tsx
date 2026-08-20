@@ -14,7 +14,7 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div className="flex items-center gap-3 py-2.5 border-b border-ink-50 last:border-0">
       <div className="grid place-items-center h-9 w-9 rounded-lg bg-ink-50 text-ink-500 shrink-0">
         {icon}
       </div>
@@ -80,7 +80,7 @@ export function Dashboard({
             </div>
           </div>
 
-          <div className="p-5 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+          <div className="p-5 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0">
             {p.phone && <InfoRow icon={<Phone size={16} />} label="Phone" value={maskPhone(p.phone)} />}
             {p.email && <InfoRow icon={<Mail size={16} />} label="Email" value={p.email} />}
             {p.address && <InfoRow icon={<MapPin size={16} />} label="Address" value={p.address} />}
@@ -92,8 +92,8 @@ export function Dashboard({
       </Card>
 
       {/* Critical alerts */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card hover className="border-red-100 bg-red-50/40">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+        <Card hover className="border-red-100 bg-red-50/40 p-5 flex flex-col min-h-[120px]">
           <div className="flex items-center gap-2 text-red-600 mb-3">
             <AlertTriangle size={18} />
             <h3 className="font-display font-bold">Allergies</h3>
@@ -103,9 +103,9 @@ export function Dashboard({
               <p className="text-sm text-ink-400">No known allergies.</p>
             ) : (
               allergies.map((a) => (
-                <div key={a.id} className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-ink-800">{a.name}</span>
-                  <Badge tone={a.severity === 'Severe' ? 'red' : a.severity === 'Moderate' ? 'amber' : 'slate'}>
+                <div key={a.id} className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-ink-800 break-words">{a.name}</span>
+                  <Badge tone={a.severity === 'Severe' ? 'red' : a.severity === 'Moderate' ? 'amber' : 'slate'} className="shrink-0">
                     {a.severity}
                   </Badge>
                 </div>
@@ -114,7 +114,7 @@ export function Dashboard({
           </div>
         </Card>
 
-        <Card hover>
+        <Card hover className="p-5 flex flex-col min-h-[120px]">
           <div className="flex items-center gap-2 text-teal-600 mb-3">
             <Pill size={18} />
             <h3 className="font-display font-bold text-ink-800">Current Medications</h3>
@@ -133,7 +133,7 @@ export function Dashboard({
           </div>
         </Card>
 
-        <Card hover>
+        <Card hover className="p-5 flex flex-col min-h-[120px]">
           <div className="flex items-center gap-2 text-blue-600 mb-3">
             <Heart size={18} />
             <h3 className="font-display font-bold text-ink-800">Medical Conditions</h3>
@@ -145,7 +145,7 @@ export function Dashboard({
               conditions.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-ink-800 truncate">{c.name}</span>
-                  <Badge tone={c.status === 'Active' ? 'amber' : c.status === 'Managed' ? 'teal' : 'green'}>
+                  <Badge tone={c.status === 'Active' ? 'amber' : c.status === 'Managed' ? 'teal' : 'green'} className="shrink-0">
                     {c.status}
                   </Badge>
                 </div>
@@ -156,8 +156,8 @@ export function Dashboard({
       </div>
 
       {/* Last consultation + quick links */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <Card className="lg:col-span-2 p-5">
           <SectionTitle
             title="Latest Visit"
             icon={<Stethoscope size={18} />}
@@ -173,13 +173,13 @@ export function Dashboard({
                 <Badge tone="teal"><Calendar size={12} /> {lastCon.date}</Badge>
                 <Badge tone="blue">{lastCon.specialization}</Badge>
               </div>
-              <p className="font-semibold text-ink-800">{lastCon.doctor}</p>
-              <p className="text-sm text-ink-500 mt-0.5">Reason: {lastCon.reason}</p>
-              <p className="text-sm text-ink-600 mt-2">
+              <p className="font-semibold text-ink-800 break-words">{lastCon.doctor}</p>
+              <p className="text-sm text-ink-500 mt-0.5 break-words">Reason: {lastCon.reason}</p>
+              <p className="text-sm text-ink-600 mt-2 break-words">
                 <span className="font-semibold">Diagnosis:</span> {lastCon.diagnosis}
               </p>
               {lastCon.prescription && lastCon.prescription !== 'None' && (
-                <p className="text-sm text-ink-600 mt-1">
+                <p className="text-sm text-ink-600 mt-1 break-words">
                   <span className="font-semibold">Prescription:</span> {lastCon.prescription}
                 </p>
               )}
@@ -192,7 +192,7 @@ export function Dashboard({
           )}
         </Card>
 
-        <Card className="flex flex-col justify-between">
+        <Card className="p-5 flex flex-col">
           <div>
             <div className="flex items-center gap-2 text-teal-600 mb-2">
               <ShieldCheck size={18} />
