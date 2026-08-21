@@ -488,26 +488,26 @@ export function DoctorDashboard({
                 {/* Patient header */}
                 <Card className="overflow-hidden p-0">
                   <div className="flex flex-col sm:flex-row">
-                    <div className="relative bg-gradient-to-br from-teal-600 to-brand-700 p-6 sm:p-8 text-white sm:w-2/5">
+                    <div className="relative bg-gradient-to-br from-teal-600 to-brand-700 p-5 sm:p-8 text-white sm:w-2/5">
                       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4) 0, transparent 40%)' }} />
                       <div className="relative">
-                        <div className="flex items-center gap-4">
-                          <div className="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur-sm grid place-items-center text-2xl font-bold border border-white/20 shrink-0">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-white/15 backdrop-blur-sm grid place-items-center text-xl sm:text-2xl font-bold border border-white/20 shrink-0">
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <h1 className="font-display text-2xl font-extrabold leading-tight truncate">{p.name}</h1>
-                            <p className="text-teal-50/90 text-sm font-mono">{p.medId}</p>
+                            <h1 className="font-display text-xl sm:text-2xl font-extrabold leading-tight truncate">{p.name}</h1>
+                            <p className="text-teal-50/90 text-xs sm:text-sm font-mono truncate">{p.medId}</p>
                           </div>
                         </div>
-                        <div className="mt-6 flex flex-wrap gap-2">
+                        <div className="mt-4 sm:mt-6 flex flex-wrap gap-2">
                           <span className="chip bg-white/15 backdrop-blur-sm border border-white/10"><Droplet size={13} /> {p.bloodGroup}</span>
                           {p.gender && <span className="chip bg-white/15 backdrop-blur-sm border border-white/10"><User size={13} /> {p.gender}, {p.age} yrs</span>}
                           <span className="chip bg-white/15 backdrop-blur-sm border border-white/10"><Calendar size={13} /> DOB {p.dob}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="p-6 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                    <div className="p-5 sm:p-8 sm:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0">
                       {p.phone && <InfoRow icon={<Phone size={16} />} label="Phone" value={maskPhone(p.phone)} />}
                       {p.email && <InfoRow icon={<Mail size={16} />} label="Email" value={p.email} />}
                       {p.address && <InfoRow icon={<MapPin size={16} />} label="Address" value={p.address} />}
@@ -517,8 +517,8 @@ export function DoctorDashboard({
                 </Card>
 
                 {/* Critical alerts */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="border-red-100 bg-red-50/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                  <Card className="border-red-100 bg-red-50/40 p-5 flex flex-col min-h-[120px]">
                     <div className="flex items-center gap-2 text-red-600 mb-3">
                       <AlertTriangle size={18} />
                       <h3 className="font-display font-bold">Allergies</h3>
@@ -529,14 +529,14 @@ export function DoctorDashboard({
                       ) : (
                         patientRecords.allergies.map((a) => (
                           <div key={a.id} className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-ink-800 truncate">{a.name}</span>
+                            <span className="text-sm font-semibold text-ink-800 break-words">{a.name}</span>
                             <Badge tone={a.severity === 'Severe' ? 'red' : a.severity === 'Moderate' ? 'amber' : 'slate'} className="shrink-0">{a.severity}</Badge>
                           </div>
                         ))
                       )}
                     </div>
                   </Card>
-                  <Card>
+                  <Card className="p-5 flex flex-col min-h-[120px]">
                     <div className="flex items-center gap-2 text-teal-600 mb-3">
                       <Pill size={18} />
                       <h3 className="font-display font-bold text-ink-800">Current Medications</h3>
@@ -547,14 +547,14 @@ export function DoctorDashboard({
                       ) : (
                         currentMeds.map((m) => (
                           <div key={m.id} className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-ink-800 truncate">{m.name}</span>
+                            <span className="text-sm font-semibold text-ink-800 break-words">{m.name}</span>
                             <span className="text-xs text-ink-400 shrink-0">{m.dosage}</span>
                           </div>
                         ))
                       )}
                     </div>
                   </Card>
-                  <Card>
+                  <Card className="p-5 flex flex-col min-h-[120px]">
                     <div className="flex items-center gap-2 text-blue-600 mb-3">
                       <Heart size={18} />
                       <h3 className="font-display font-bold text-ink-800">Medical Conditions</h3>
@@ -565,7 +565,7 @@ export function DoctorDashboard({
                       ) : (
                         patientRecords.conditions.map((c) => (
                           <div key={c.id} className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-ink-800 truncate">{c.name}</span>
+                            <span className="text-sm font-semibold text-ink-800 break-words">{c.name}</span>
                             <Badge tone={c.status === 'Active' ? 'amber' : c.status === 'Managed' ? 'teal' : 'green'} className="shrink-0">{c.status}</Badge>
                           </div>
                         ))
@@ -575,7 +575,7 @@ export function DoctorDashboard({
                 </div>
 
                 {/* Consultation history */}
-                <Card className="p-6">
+                <Card className="p-5 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="grid place-items-center h-10 w-10 rounded-xl bg-teal-50 text-teal-600 shrink-0">
@@ -613,16 +613,16 @@ export function DoctorDashboard({
                             <Badge tone="teal"><Calendar size={12} /> {c.date}</Badge>
                             <Badge tone="blue">{c.specialization}</Badge>
                           </div>
-                          <h3 className="font-display font-bold text-ink-900">{c.doctor}</h3>
-                          <p className="text-sm text-ink-500 mt-0.5">{c.reason}</p>
+                          <h3 className="font-display font-bold text-ink-900 break-words">{c.doctor}</h3>
+                          <p className="text-sm text-ink-500 mt-0.5 break-words">{c.reason}</p>
                           <div className="mt-3 space-y-1.5 text-sm">
-                            <p className="text-ink-700"><span className="font-semibold text-ink-500">Diagnosis:</span> {c.diagnosis}</p>
-                            <p className="text-ink-700"><span className="font-semibold text-ink-500">Prescription:</span> {c.prescription}</p>
-                            <p className="text-ink-700"><span className="font-semibold text-ink-500">Tests:</span> {c.tests}</p>
-                            <p className="text-ink-700"><span className="font-semibold text-ink-500">Follow-up:</span> {c.followUp}</p>
+                            <p className="text-ink-700 break-words"><span className="font-semibold text-ink-500">Diagnosis:</span> {c.diagnosis}</p>
+                            <p className="text-ink-700 break-words"><span className="font-semibold text-ink-500">Prescription:</span> {c.prescription}</p>
+                            <p className="text-ink-700 break-words"><span className="font-semibold text-ink-500">Tests:</span> {c.tests}</p>
+                            <p className="text-ink-700 break-words"><span className="font-semibold text-ink-500">Follow-up:</span> {c.followUp}</p>
                           </div>
                           {c.notes !== 'No additional notes.' && (
-                            <p className="text-sm text-ink-600 mt-2 pt-2 border-t border-ink-100">{c.notes}</p>
+                            <p className="text-sm text-ink-600 mt-2 pt-2 border-t border-ink-100 break-words">{c.notes}</p>
                           )}
                         </div>
                       ))}
@@ -895,7 +895,7 @@ export function DoctorDashboard({
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div className="flex items-center gap-3 py-2.5 border-b border-ink-50 last:border-0">
       <div className="grid place-items-center h-9 w-9 rounded-lg bg-ink-50 text-ink-500 shrink-0">
         {icon}
       </div>
