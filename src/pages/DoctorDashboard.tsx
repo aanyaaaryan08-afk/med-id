@@ -3,10 +3,14 @@ import { createPortal } from 'react-dom';
 import { LogoWordmark } from '@/components/Logo';
 import { Card, Badge } from '@/components/ui';
 import { fetchConsultations, insertConsultation } from '@/lib/consultations';
-import { categorizeConsultation, searchPatients, fetchPatient, fetchPatientPersonalPhone, type PatientSearchResult, type PatientRecords } from '@/lib/patients';
+import { fetchItemsForConsultation } from '@/lib/consultationItems';
+import { categorizeConsultation, syncItemsToCategoryTables, searchPatients, fetchPatient, fetchPatientPersonalPhone, type PatientSearchResult, type PatientRecords } from '@/lib/patients';
 import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
-import type { Consultation } from '@/types';
-import { Search, Plus, X, Stethoscope, Calendar, Pill, Droplet, Heart, User, Phone, Mail, MapPin, Fingerprint, LogOut, UserCog, Siren, Menu, ArrowLeft, Smartphone, KeyRound, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2 } from 'lucide-react';
+import { generateConsultationPdf } from '@/lib/pdf';
+import type { Consultation, ItemCategory } from '@/types';
+import { CATEGORY_OPTIONS } from '@/types';
+import { insertConsultationItems } from '@/lib/consultationItems';
+import { Search, Plus, X, Stethoscope, Calendar, Pill, Droplet, Heart, User, Phone, Mail, MapPin, Fingerprint, LogOut, UserCog, Siren, Menu, ArrowLeft, Smartphone, KeyRound, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, FileDown, Trash2 } from 'lucide-react';
 
 const emptyForm = {
   doctor: '',
@@ -19,6 +23,13 @@ const emptyForm = {
   notes: '',
   followUp: '',
 };
+
+interface FormItem {
+  category: ItemCategory;
+  name: string;
+  details: string;
+  status: string;
+}
 
 type AccessStep = 'search' | 'otp' | 'verified' | 'record';
 
@@ -54,6 +65,7 @@ export function DoctorDashboard({
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [formItems, setFormItems] = useState<FormItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -215,7 +227,7 @@ export function DoctorDashboard({
         notes: form.notes || 'No additional notes.',
         followUp: form.followUp || 'Not required',
       };
-      await insertConsultation(selectedPatient.medId, {
+      const saved = await insertConsultation(selectedPatient.medId, {
         date: consultation.date,
         doctor: consultation.doctor,
         specialization: consultation.specialization,
@@ -226,8 +238,26 @@ export function DoctorDashboard({
         notes: consultation.notes,
         followUp: consultation.followUp,
       });
+      const validItems = formItems.filter((it) => it.name.trim().length > 0);
+      if (validItems.length > 0) {
+        await insertConsultationItems(
+          selectedPatient.medId,
+          saved.id,
+          validItems.map((it) => ({
+            category: it.category,
+            name: it.name.trim(),
+            details: it.details.trim(),
+            date: consultation.date,
+            doctor: consultation.doctor,
+            status: it.status.trim(),
+          }))
+        );
+        const items = await fetchItemsForConsultation(saved.id);
+        await syncItemsToCategoryTables(selectedPatient.medId, items);
+      }
       await categorizeConsultation(selectedPatient.medId, consultation);
       setForm(emptyForm);
+      setFormItems([]);
       setShowForm(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
@@ -239,8 +269,19 @@ export function DoctorDashboard({
     }
   };
 
+  const handleDownloadPdf = async (c: Consultation) => {
+    if (!patientRecords) return;
+    try {
+      const items = await fetchItemsForConsultation(c.id);
+      generateConsultationPdf(patientRecords.patient, c, items);
+    } catch {
+      setErrors({ form: 'Failed to generate PDF report.' });
+    }
+  };
+
   const closeForm = () => {
     setForm(emptyForm);
+    setFormItems([]);
     setErrors({});
     setShowForm(false);
   };
@@ -624,6 +665,14 @@ export function DoctorDashboard({
                           {c.notes !== 'No additional notes.' && (
                             <p className="text-sm text-ink-600 mt-2 pt-2 border-t border-ink-100 break-words">{c.notes}</p>
                           )}
+                          <div className="mt-3 pt-2 border-t border-ink-100">
+                            <button
+                              onClick={() => handleDownloadPdf(c)}
+                              className="btn-secondary px-3 py-1.5 text-xs"
+                            >
+                              <FileDown size={14} /> Download PDF Report
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -677,6 +726,71 @@ export function DoctorDashboard({
                 <Field label="Tests Performed">
                   <input className="input" value={form.tests} onChange={(e) => handleChange('tests', e.target.value)} placeholder="e.g. CBC, X-Ray" />
                 </Field>
+
+                {/* Structured medical items */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label">Medical Records from This Consultation</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormItems((prev) => [...prev, { category: 'diagnosis', name: '', details: '', status: '' }])}
+                      className="btn-ghost text-sm text-teal-600 hover:bg-teal-50 px-2 py-1"
+                    >
+                      <Plus size={14} /> Add Item
+                    </button>
+                  </div>
+                  {formItems.length === 0 ? (
+                    <p className="text-xs text-ink-400 py-3 text-center rounded-xl bg-ink-50 border border-ink-100">
+                      No structured items added. Use the form fields above for basic info, or add structured items below for precise categorization.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {formItems.map((item, idx) => (
+                        <div key={idx} className="rounded-xl border border-ink-200 p-3 space-y-2 bg-ink-50/50">
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="input flex-1 text-sm"
+                              value={item.category}
+                              onChange={(e) => setFormItems((prev) => prev.map((it, i) => i === idx ? { ...it, category: e.target.value as ItemCategory } : it))}
+                            >
+                              {CATEGORY_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => setFormItems((prev) => prev.filter((_, i) => i !== idx))}
+                              className="p-2 rounded-lg text-red-500 hover:bg-red-50 shrink-0"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <input
+                            className="input text-sm"
+                            value={item.name}
+                            onChange={(e) => setFormItems((prev) => prev.map((it, i) => i === idx ? { ...it, name: e.target.value } : it))}
+                            placeholder="Item name (e.g. Chest X-Ray, Amoxicillin 500mg, Hypertension)"
+                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input
+                              className="input text-sm"
+                              value={item.details}
+                              onChange={(e) => setFormItems((prev) => prev.map((it, i) => i === idx ? { ...it, details: e.target.value } : it))}
+                              placeholder="Details (dosage, result, severity…)"
+                            />
+                            <input
+                              className="input text-sm"
+                              value={item.status}
+                              onChange={(e) => setFormItems((prev) => prev.map((it, i) => i === idx ? { ...it, status: e.target.value } : it))}
+                              placeholder="Status (Normal, Abnormal, Active…)"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <Field label="Doctor's Notes">
                   <textarea className="input min-h-[80px] resize-y" value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Clinical notes and advice…" />
                 </Field>

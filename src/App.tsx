@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { type PageId, type Consultation, type Patient, type Allergy, type MedicalCondition, type Medication, type Surgery, type Test } from '@/types';
 import { DEMO_MED_ID, consultations as initialConsultations, patient as demoPatient, allergies as demoAllergies, conditions as demoConditions, medications as demoMedications, surgeries as demoSurgeries, tests as demoTests } from '@/data';
 import { fetchConsultations, insertConsultation } from '@/lib/consultations';
-import { fetchPatient, type PatientRecords, categorizeConsultation, fetchLatestConsultation, patientExists } from '@/lib/patients';
+import { fetchItemsForPatient, insertConsultationItems, fetchItemsForConsultation } from '@/lib/consultationItems';
+import { fetchPatient, type PatientRecords, categorizeConsultation, syncItemsToCategoryTables, fetchLatestConsultation, patientExists } from '@/lib/patients';
+import type { Consultation, ConsultationItem, ItemCategory } from '@/types';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { Landing } from '@/pages/Landing';
@@ -24,6 +26,7 @@ interface ActivePatientData {
   records: PatientRecords;
   consultations: Consultation[];
   latestConsultation: Consultation | null;
+  consultationItems: ConsultationItem[];
 }
 
 export default function App() {
@@ -47,8 +50,9 @@ export default function App() {
         return;
       }
       const consultations = await fetchConsultations(medId);
+      const consultationItems = await fetchItemsForPatient(medId);
       const latest = consultations.length > 0 ? consultations[0] : null;
-      setActiveData({ records, consultations, latestConsultation: latest });
+      setActiveData({ records, consultations, latestConsultation: latest, consultationItems });
     } catch {
       setActiveData(null);
     } finally {
@@ -240,6 +244,7 @@ export default function App() {
     },
     consultations: initialConsultations,
     latestConsultation: initialConsultations[0] ?? null,
+    consultationItems: [],
   };
 
   const sortedConsultations = [...currentData.consultations].sort((a, b) =>

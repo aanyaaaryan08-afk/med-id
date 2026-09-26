@@ -409,6 +409,33 @@ export async function categorizeConsultation(medId: string, c: Consultation): Pr
   }
 }
 
+import type { ConsultationItem, ItemCategory } from '@/types';
+
+export async function syncItemsToCategoryTables(medId: string, items: ConsultationItem[]): Promise<void> {
+  for (const item of items) {
+    switch (item.category) {
+      case 'allergy':
+        await addAllergy(medId, item.name);
+        break;
+      case 'condition':
+        await addCondition(medId, item.name, item.details);
+        break;
+      case 'medication':
+        await addMedication(medId, item.name, item.details, item.doctor);
+        break;
+      case 'procedure':
+        await addSurgery(medId, item.name, item.date, '', item.doctor, item.details);
+        break;
+      case 'imaging':
+      case 'lab_test':
+        await addTest(medId, item.name, item.date, item.category === 'imaging' ? 'Radiology' : 'Laboratory', item.details, (item.status as Test['status']) || 'Pending');
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 export async function fetchLatestConsultation(medId: string): Promise<Consultation | null> {
   const { data, error } = await supabase
     .from('consultations')
