@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { type PageId, type Consultation, type Patient, type Allergy, type MedicalCondition, type Medication, type Surgery, type Test } from '@/types';
+import { type PageId, type Consultation, type ConsultationItem, type Patient, type Allergy, type MedicalCondition, type Medication, type Surgery, type Test } from '@/types';
 import { DEMO_MED_ID, consultations as initialConsultations, patient as demoPatient, allergies as demoAllergies, conditions as demoConditions, medications as demoMedications, surgeries as demoSurgeries, tests as demoTests } from '@/data';
 import { fetchConsultations, insertConsultation } from '@/lib/consultations';
-import { fetchItemsForPatient, insertConsultationItems, fetchItemsForConsultation } from '@/lib/consultationItems';
-import { fetchPatient, type PatientRecords, categorizeConsultation, syncItemsToCategoryTables, fetchLatestConsultation, patientExists } from '@/lib/patients';
-import type { Consultation, ConsultationItem, ItemCategory } from '@/types';
+import { fetchItemsForPatient } from '@/lib/consultationItems';
+import { fetchPatient, type PatientRecords, categorizeConsultation, patientExists } from '@/lib/patients';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { Landing } from '@/pages/Landing';
@@ -284,7 +283,7 @@ export default function App() {
                 <Consultations consultations={sortedConsultations} />
               )}
               {page === 'medications' && <Medications medications={currentData.records.medications} />}
-              {page === 'records' && <Records allergies={currentData.records.allergies} conditions={currentData.records.conditions} surgeries={currentData.records.surgeries} tests={currentData.records.tests} />}
+              {page === 'records' && <Records allergies={currentData.records.allergies} conditions={currentData.records.conditions} surgeries={currentData.records.surgeries} tests={currentData.records.tests} consultationItems={currentData.consultationItems} />}
               {page === 'doctor-access' && <DoctorAccess onAccess={handleDoctorAccess} />}
               {page === 'bracelet' && <Bracelet patient={currentData.records.patient} />}
             </>

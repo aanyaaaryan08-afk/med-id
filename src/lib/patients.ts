@@ -7,6 +7,7 @@ import type {
   Test,
   Medication,
   Consultation,
+  ConsultationItem,
 } from '@/types';
 
 export interface PatientRecords {
@@ -408,8 +409,6 @@ export async function categorizeConsultation(medId: string, c: Consultation): Pr
     await addAllergy(medId, c.reason);
   }
 }
-
-import type { ConsultationItem, ItemCategory } from '@/types';
 
 export async function syncItemsToCategoryTables(medId: string, items: ConsultationItem[]): Promise<void> {
   for (const item of items) {
