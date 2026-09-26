@@ -376,46 +376,13 @@ export async function addTest(medId: string, name: string, date: string, type: s
   });
 }
 
-export async function categorizeConsultation(medId: string, c: Consultation): Promise<void> {
-  const diagnosisLower = c.diagnosis.toLowerCase();
-  const prescriptionLower = c.prescription.toLowerCase();
-  const testsLower = c.tests.toLowerCase();
-  const reasonLower = c.reason.toLowerCase();
-
-  if (diagnosisLower !== 'none' && diagnosisLower.length > 0) {
-    await addCondition(medId, c.diagnosis, `Diagnosed during consultation on ${c.date} by ${c.doctor}. Reason: ${c.reason}`);
-  }
-
-  if (prescriptionLower !== 'none' && prescriptionLower.length > 0) {
-    const meds = prescriptionLower.split(/[,;]/).map((m) => m.trim()).filter((m) => m.length > 0);
-    for (const med of meds) {
-      await addMedication(medId, med, c.diagnosis, c.doctor);
-    }
-  }
-
-  if (testsLower !== 'none' && testsLower.length > 0) {
-    const testNames = c.tests.split(/[,;]/).map((t) => t.trim()).filter((t) => t.length > 0);
-    for (const testName of testNames) {
-      const isNegative = /negative|normal|clear|no fracture|no abnormality/.test(testName.toLowerCase());
-      await addTest(medId, testName, c.date, '', isNegative ? 'Normal' : 'Pending', isNegative ? 'Normal' : 'Pending');
-    }
-  }
-
-  if (/surgery|surgical|operation|appendectomy|tonsillect|laparoscop|removal/.test(diagnosisLower + reasonLower)) {
-    await addSurgery(medId, c.diagnosis, c.date, '', c.doctor, c.notes || '');
-  }
-
-  if (/allerg/.test(reasonLower + diagnosisLower)) {
-    await addAllergy(medId, c.reason);
-  }
-}
-
 export async function syncItemsToCategoryTables(medId: string, items: ConsultationItem[]): Promise<void> {
   for (const item of items) {
     switch (item.category) {
       case 'allergy':
         await addAllergy(medId, item.name);
         break;
+      case 'diagnosis':
       case 'condition':
         await addCondition(medId, item.name, item.details);
         break;

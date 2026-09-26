@@ -4,9 +4,10 @@ import { LogoWordmark } from '@/components/Logo';
 import { Card, Badge } from '@/components/ui';
 import { fetchConsultations, insertConsultation } from '@/lib/consultations';
 import { fetchItemsForConsultation } from '@/lib/consultationItems';
-import { categorizeConsultation, syncItemsToCategoryTables, searchPatients, fetchPatient, fetchPatientPersonalPhone, type PatientSearchResult, type PatientRecords } from '@/lib/patients';
+import { syncItemsToCategoryTables, searchPatients, fetchPatient, fetchPatientPersonalPhone, type PatientSearchResult, type PatientRecords } from '@/lib/patients';
 import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
-import { generateConsultationPdf } from '@/lib/pdf';
+import { generateConsultationPdf, generateConsultationPdfBlob } from '@/lib/pdf';
+import { uploadDocument } from '@/lib/documents';
 import type { Consultation, ItemCategory } from '@/types';
 import { CATEGORY_OPTIONS } from '@/types';
 import { insertConsultationItems } from '@/lib/consultationItems';
@@ -255,7 +256,13 @@ export function DoctorDashboard({
         const items = await fetchItemsForConsultation(saved.id);
         await syncItemsToCategoryTables(selectedPatient.medId, items);
       }
-      await categorizeConsultation(selectedPatient.medId, consultation);
+      // Generate and upload PDF document from the same saved structured data
+      const itemsForPdf = await fetchItemsForConsultation(saved.id);
+      const fullPatient = await fetchPatient(selectedPatient.medId);
+      if (fullPatient) {
+        const { blob, fileName } = generateConsultationPdfBlob(fullPatient.patient, saved, itemsForPdf);
+        await uploadDocument(selectedPatient.medId, saved.id, fileName, blob, saved.doctor, saved.date);
+      }
       setForm(emptyForm);
       setFormItems([]);
       setShowForm(false);

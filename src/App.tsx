@@ -3,7 +3,8 @@ import { type PageId, type Consultation, type ConsultationItem, type Patient, ty
 import { DEMO_MED_ID, consultations as initialConsultations, patient as demoPatient, allergies as demoAllergies, conditions as demoConditions, medications as demoMedications, surgeries as demoSurgeries, tests as demoTests } from '@/data';
 import { fetchConsultations, insertConsultation } from '@/lib/consultations';
 import { fetchItemsForPatient } from '@/lib/consultationItems';
-import { fetchPatient, type PatientRecords, categorizeConsultation, patientExists } from '@/lib/patients';
+import { fetchPatient, type PatientRecords, patientExists } from '@/lib/patients';
+import { fetchDocumentsForPatient, type ConsultationDocument } from '@/lib/documents';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { Landing } from '@/pages/Landing';
@@ -13,6 +14,7 @@ import { Timeline } from '@/pages/Timeline';
 import { Consultations } from '@/pages/Consultations';
 import { Medications } from '@/pages/Medications';
 import { Records } from '@/pages/Records';
+import { Documents } from '@/pages/Documents';
 import { DoctorAccess } from '@/pages/DoctorAccess';
 import { Bracelet } from '@/pages/Bracelet';
 import { DoctorLogin } from '@/pages/DoctorLogin';
@@ -26,6 +28,7 @@ interface ActivePatientData {
   consultations: Consultation[];
   latestConsultation: Consultation | null;
   consultationItems: ConsultationItem[];
+  documents: ConsultationDocument[];
 }
 
 export default function App() {
@@ -50,8 +53,9 @@ export default function App() {
       }
       const consultations = await fetchConsultations(medId);
       const consultationItems = await fetchItemsForPatient(medId);
+      const documents = await fetchDocumentsForPatient(medId);
       const latest = consultations.length > 0 ? consultations[0] : null;
-      setActiveData({ records, consultations, latestConsultation: latest, consultationItems });
+      setActiveData({ records, consultations, latestConsultation: latest, consultationItems, documents });
     } catch {
       setActiveData(null);
     } finally {
@@ -122,7 +126,6 @@ export default function App() {
         notes: c.notes,
         followUp: c.followUp,
       });
-      await categorizeConsultation(activeMedId, c);
       await loadPatientData(activeMedId);
     } catch {
       // Silent fail for demo
@@ -244,6 +247,7 @@ export default function App() {
     consultations: initialConsultations,
     latestConsultation: initialConsultations[0] ?? null,
     consultationItems: [],
+    documents: [],
   };
 
   const sortedConsultations = [...currentData.consultations].sort((a, b) =>
@@ -284,6 +288,7 @@ export default function App() {
               )}
               {page === 'medications' && <Medications medications={currentData.records.medications} />}
               {page === 'records' && <Records allergies={currentData.records.allergies} conditions={currentData.records.conditions} surgeries={currentData.records.surgeries} tests={currentData.records.tests} consultationItems={currentData.consultationItems} />}
+              {page === 'documents' && <Documents documents={currentData.documents} />}
               {page === 'doctor-access' && <DoctorAccess onAccess={handleDoctorAccess} />}
               {page === 'bracelet' && <Bracelet patient={currentData.records.patient} />}
             </>

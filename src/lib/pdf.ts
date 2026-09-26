@@ -23,11 +23,11 @@ interface PdfConfig {
   contentWidth: number;
 }
 
-export function generateConsultationPdf(
+function buildPdf(
   patient: Patient,
   consultation: Consultation,
   items: ConsultationItem[]
-): void {
+): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const cfg: PdfConfig = {
     pageWidth: doc.internal.pageSize.getWidth(),
@@ -224,8 +224,30 @@ export function generateConsultationPdf(
   }
 
   addFooter(doc, cfg);
+  return doc;
+}
+
+export function generateConsultationPdf(
+  patient: Patient,
+  consultation: Consultation,
+  items: ConsultationItem[]
+): void {
+  const doc = buildPdf(patient, consultation, items);
   const safeName = patient.name.replace(/[^a-zA-Z0-9]/g, '_');
-  doc.save(`MED-ID_Consultation_${safeName}_${consultation.date.replace(/\s/g, '_')}.pdf`);
+  const fileName = `MED-ID_Consultation_${safeName}_${consultation.date.replace(/\s/g, '_')}.pdf`;
+  doc.save(fileName);
+}
+
+export function generateConsultationPdfBlob(
+  patient: Patient,
+  consultation: Consultation,
+  items: ConsultationItem[]
+): { blob: Blob; fileName: string } {
+  const doc = buildPdf(patient, consultation, items);
+  const safeName = patient.name.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `MED-ID_Consultation_${safeName}_${consultation.date.replace(/\s/g, '_')}.pdf`;
+  const blob = doc.output('blob');
+  return { blob, fileName };
 }
 
 function addFooter(doc: jsPDF, cfg: PdfConfig): void {

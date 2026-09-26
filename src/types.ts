@@ -5,6 +5,7 @@ export type PageId =
   | 'consultations'
   | 'medications'
   | 'records'
+  | 'documents'
   | 'doctor-access'
   | 'bracelet';
 

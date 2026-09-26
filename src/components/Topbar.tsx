@@ -8,6 +8,7 @@ const pageLabels: Record<PageId, string> = {
   consultations: 'Consultations',
   medications: 'Medications',
   records: 'Records',
+  documents: 'Documents',
   'doctor-access': 'Doctor Access',
   bracelet: 'Bracelet',
 };

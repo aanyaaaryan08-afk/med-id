@@ -8,6 +8,7 @@ import {
   Stethoscope,
   Pill,
   FolderHeart,
+  FileText,
   UserCog,
   Watch,
   X,
@@ -22,6 +23,7 @@ const navItems: { id: PageId; label: string; icon: typeof LayoutDashboard }[] = 
   { id: 'consultations', label: 'Consultations', icon: Stethoscope },
   { id: 'medications', label: 'Medications', icon: Pill },
   { id: 'records', label: 'Records', icon: FolderHeart },
+  { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'doctor-access', label: 'Doctor Access', icon: UserCog },
   { id: 'bracelet', label: 'Bracelet', icon: Watch },
 ];
