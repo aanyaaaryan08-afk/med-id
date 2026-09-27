@@ -1,8 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Badge } from '@/components/ui';
-import type { ConsultationDocument } from '@/lib/documents';
-import { downloadDocument, getDocumentBlobUrl } from '@/lib/documents';
-import { FileText, Eye, Download, FileCog, AlertCircle } from 'lucide-react';
+import type { ConsultationDocument, DocumentCategory } from '@/lib/documents';
+import { DOCUMENT_CATEGORIES, downloadDocument, getDocumentBlobUrl } from '@/lib/documents';
+import { FileText, Eye, Download, FileCog, AlertCircle, Stethoscope, Pill, FlaskConical, Syringe, FolderOpen } from 'lucide-react';
+
+const CATEGORY_ICONS: Record<DocumentCategory, typeof FileText> = {
+  consultations: Stethoscope,
+  prescriptions: Pill,
+  surgeries: Stethoscope,
+  tests: FlaskConical,
+  vaccinations: Syringe,
+  other: FolderOpen,
+};
+
+const CATEGORY_TONES: Record<DocumentCategory, 'teal' | 'blue' | 'green' | 'amber' | 'red' | 'slate'> = {
+  consultations: 'teal',
+  prescriptions: 'green',
+  surgeries: 'blue',
+  tests: 'amber',
+  vaccinations: 'red',
+  other: 'slate',
+};
 
 export function Documents({ documents }: { documents: ConsultationDocument[] }) {
   const [viewing, setViewing] = useState<ConsultationDocument | null>(null);
@@ -43,6 +61,21 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
       setDownloadingId(null);
     }
   };
+
+  const grouped = useMemo(() => {
+    const map = new Map<DocumentCategory, ConsultationDocument[]>();
+    for (const doc of documents) {
+      const bucket = map.get(doc.category) ?? [];
+      bucket.push(doc);
+      map.set(doc.category, bucket);
+    }
+    return map;
+  }, [documents]);
+
+  const visibleCategories = useMemo(
+    () => DOCUMENT_CATEGORIES.filter((cat) => grouped.has(cat.id) && (grouped.get(cat.id)?.length ?? 0) > 0),
+    [grouped],
+  );
 
   if (documents.length === 0) {
     return (
@@ -88,50 +121,66 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {documents.map((doc) => (
-          <Card key={doc.id} hover className="p-5">
-            <div className="flex items-start gap-3">
-              <div className="grid place-items-center h-11 w-11 rounded-xl bg-red-50 text-red-500 shrink-0">
-                <FileText size={20} />
+      <div className="space-y-8">
+        {visibleCategories.map((cat) => {
+          const catDocs = grouped.get(cat.id) ?? [];
+          const Icon = CATEGORY_ICONS[cat.id];
+          const tone = CATEGORY_TONES[cat.id];
+          return (
+            <div key={cat.id}>
+              <div className="flex items-center gap-2 mb-4">
+                <Icon size={18} className="text-ink-500" />
+                <h2 className="font-display font-bold text-ink-800">{cat.label}</h2>
+                <Badge tone={tone}>{catDocs.length}</Badge>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display font-bold text-ink-900 truncate" title={doc.fileName}>
-                  {doc.fileName.replace(/\.pdf$/, '')}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge tone="teal">PDF</Badge>
-                  <span className="text-xs text-ink-400">
-                    {doc.consultationDate || 'Date N/A'}
-                  </span>
-                </div>
-                {doc.doctor && (
-                  <p className="text-xs text-ink-400 mt-1">Dr. {doc.doctor}</p>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {catDocs.map((doc) => (
+                  <Card key={doc.id} hover className="p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="grid place-items-center h-11 w-11 rounded-xl bg-red-50 text-red-500 shrink-0">
+                        <FileText size={20} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-display font-bold text-ink-900 truncate" title={doc.fileName}>
+                          {doc.fileName.replace(/\.pdf$/, '')}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge tone="teal">PDF</Badge>
+                          <span className="text-xs text-ink-400">
+                            {doc.consultationDate || 'Date N/A'}
+                          </span>
+                        </div>
+                        {doc.doctor && (
+                          <p className="text-xs text-ink-400 mt-1">Dr. {doc.doctor}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4 pt-3 border-t border-ink-100">
+                      <button
+                        onClick={() => setViewing(doc)}
+                        className="btn-secondary flex-1 px-3 py-2 text-sm"
+                      >
+                        <Eye size={15} /> View
+                      </button>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        className="btn-primary flex-1 px-3 py-2 text-sm"
+                      >
+                        {downloadingId === doc.id ? (
+                          <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Download size={15} />
+                        )}
+                        Download
+                      </button>
+                    </div>
+                  </Card>
+                ))}
               </div>
             </div>
-            <div className="flex gap-2 mt-4 pt-3 border-t border-ink-100">
-              <button
-                onClick={() => setViewing(doc)}
-                className="btn-secondary flex-1 px-3 py-2 text-sm"
-              >
-                <Eye size={15} /> View
-              </button>
-              <button
-                onClick={() => handleDownload(doc)}
-                disabled={downloadingId === doc.id}
-                className="btn-primary flex-1 px-3 py-2 text-sm"
-              >
-                {downloadingId === doc.id ? (
-                  <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Download size={15} />
-                )}
-                Download
-              </button>
-            </div>
-          </Card>
-        ))}
+          );
+        })}
       </div>
 
       {viewing && (

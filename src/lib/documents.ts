@@ -2,6 +2,14 @@ import { supabase } from './supabase';
 
 const BUCKET = 'consultation-docs';
 
+export type DocumentCategory =
+  | 'consultations'
+  | 'prescriptions'
+  | 'surgeries'
+  | 'tests'
+  | 'vaccinations'
+  | 'other';
+
 export interface ConsultationDocument {
   id: string;
   patientMedId: string;
@@ -11,18 +19,46 @@ export interface ConsultationDocument {
   doctor: string;
   consultationDate: string;
   createdAt: string;
+  category: DocumentCategory;
+}
+
+export const DOCUMENT_CATEGORIES: { id: DocumentCategory; label: string }[] = [
+  { id: 'consultations', label: 'Consultations' },
+  { id: 'prescriptions', label: 'Prescriptions' },
+  { id: 'surgeries', label: 'Surgeries' },
+  { id: 'tests', label: 'Tests' },
+  { id: 'vaccinations', label: 'Vaccinations' },
+  { id: 'other', label: 'Other' },
+];
+
+const CATEGORY_KEYWORDS: { id: DocumentCategory; keywords: string[] }[] = [
+  { id: 'consultations', keywords: ['consultation', 'consult'] },
+  { id: 'prescriptions', keywords: ['prescription', 'prescribe', 'medication', 'rx'] },
+  { id: 'surgeries', keywords: ['surgery', 'surgical', 'operation', 'procedure'] },
+  { id: 'tests', keywords: ['test', 'lab', 'investigation', 'imaging', 'scan', 'x-ray', 'xray', 'mri', 'ct scan', 'blood'] },
+  { id: 'vaccinations', keywords: ['vaccination', 'vaccine', 'immunization', 'jab'] },
+];
+
+export function deriveDocumentCategory(fileName: string): DocumentCategory {
+  const lower = fileName.toLowerCase();
+  for (const { id, keywords } of CATEGORY_KEYWORDS) {
+    if (keywords.some((kw) => lower.includes(kw))) return id;
+  }
+  return 'other';
 }
 
 function rowToDoc(row: Record<string, unknown>): ConsultationDocument {
+  const fileName = (row.file_name as string) || '';
   return {
     id: row.id as string,
     patientMedId: row.patient_med_id as string,
     consultationId: row.consultation_id as string,
-    fileName: row.file_name as string,
+    fileName,
     filePath: row.file_path as string,
     doctor: (row.doctor as string) || '',
     consultationDate: (row.consultation_date as string) || '',
     createdAt: (row.created_at as string) || '',
+    category: deriveDocumentCategory(fileName),
   };
 }
 
