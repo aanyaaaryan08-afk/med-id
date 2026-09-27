@@ -23,8 +23,11 @@ export async function fetchConsultations(medId: string): Promise<Consultation[]>
     .eq('patient_med_id', medId)
     .order('date', { ascending: false });
 
-  if (error) throw error;
-  return (data as Record<string, unknown>[]).map(rowToConsultation);
+  if (error) {
+    console.error('fetchConsultations error:', error.message);
+    return [];
+  }
+  return (data as Record<string, unknown>[] | null)?.map(rowToConsultation) ?? [];
 }
 
 export async function insertConsultation(

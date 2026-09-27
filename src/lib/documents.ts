@@ -32,8 +32,11 @@ export async function fetchDocumentsForPatient(medId: string): Promise<Consultat
     .select('*')
     .eq('patient_med_id', medId)
     .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data as Record<string, unknown>[]).map(rowToDoc);
+  if (error) {
+    console.error('fetchDocumentsForPatient error:', error.message);
+    return [];
+  }
+  return (data as Record<string, unknown>[] | null)?.map(rowToDoc) ?? [];
 }
 
 export async function fetchDocumentForConsultation(consultationId: string): Promise<ConsultationDocument | null> {
@@ -98,4 +101,23 @@ export async function uploadDocument(
 export function getDocumentUrl(filePath: string): string {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+export async function downloadDocument(filePath: string, fileName: string): Promise<void> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(filePath);
+  if (error) throw error;
+  const url = URL.createObjectURL(data as Blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function getDocumentBlobUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(filePath);
+  if (error) throw error;
+  return URL.createObjectURL(data as Blob);
 }

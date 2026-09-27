@@ -21,8 +21,11 @@ export async function fetchItemsForPatient(medId: string): Promise<ConsultationI
     .eq('patient_med_id', medId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return (data as Record<string, unknown>[]).map(rowToItem);
+  if (error) {
+    console.error('fetchItemsForPatient error:', error.message);
+    return [];
+  }
+  return (data as Record<string, unknown>[] | null)?.map(rowToItem) ?? [];
 }
 
 export async function fetchItemsForConsultation(consultationId: string): Promise<ConsultationItem[]> {
@@ -32,8 +35,11 @@ export async function fetchItemsForConsultation(consultationId: string): Promise
     .eq('consultation_id', consultationId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return (data as Record<string, unknown>[]).map(rowToItem);
+  if (error) {
+    console.error('fetchItemsForConsultation error:', error.message);
+    return [];
+  }
+  return (data as Record<string, unknown>[] | null)?.map(rowToItem) ?? [];
 }
 
 function genId(): string {

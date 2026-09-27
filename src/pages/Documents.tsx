@@ -1,11 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Badge } from '@/components/ui';
 import type { ConsultationDocument } from '@/lib/documents';
-import { getDocumentUrl } from '@/lib/documents';
-import { FileText, Eye, Download, FileCog } from 'lucide-react';
+import { downloadDocument, getDocumentBlobUrl } from '@/lib/documents';
+import { FileText, Eye, Download, FileCog, AlertCircle } from 'lucide-react';
 
 export function Documents({ documents }: { documents: ConsultationDocument[] }) {
   const [viewing, setViewing] = useState<ConsultationDocument | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [viewError, setViewError] = useState('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState('');
+
+  useEffect(() => {
+    if (viewing) {
+      setBlobUrl(null);
+      setViewError('');
+      getDocumentBlobUrl(viewing.filePath)
+        .then(setBlobUrl)
+        .catch(() => setViewError('Could not load this document. Please try downloading instead.'));
+    }
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewing]);
+
+  const closeViewer = () => {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    setBlobUrl(null);
+    setViewing(null);
+    setViewError('');
+  };
+
+  const handleDownload = async (doc: ConsultationDocument) => {
+    setDownloadError('');
+    setDownloadingId(doc.id);
+    try {
+      await downloadDocument(doc.filePath, doc.fileName);
+    } catch {
+      setDownloadError('Could not download this document. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   if (documents.length === 0) {
     return (
@@ -44,6 +81,13 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
         </div>
       </div>
 
+      {downloadError && (
+        <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-3 flex items-center gap-2 animate-fade-in-fast">
+          <AlertCircle size={16} className="text-red-600 shrink-0" />
+          <p className="text-sm text-red-700">{downloadError}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {documents.map((doc) => (
           <Card key={doc.id} hover className="p-5">
@@ -73,13 +117,18 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
               >
                 <Eye size={15} /> View
               </button>
-              <a
-                href={getDocumentUrl(doc.filePath)}
-                download={doc.fileName}
+              <button
+                onClick={() => handleDownload(doc)}
+                disabled={downloadingId === doc.id}
                 className="btn-primary flex-1 px-3 py-2 text-sm"
               >
-                <Download size={15} /> Download
-              </a>
+                {downloadingId === doc.id ? (
+                  <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Download size={15} />
+                )}
+                Download
+              </button>
             </div>
           </Card>
         ))}
@@ -88,7 +137,7 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
       {viewing && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm animate-fade-in-fast"
-          onClick={() => setViewing(null)}
+          onClick={closeViewer}
         >
           <div
             className="relative w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-card-hover overflow-hidden flex flex-col"
@@ -100,26 +149,38 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
                 <span className="text-sm font-semibold text-ink-800 truncate">{viewing.fileName}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={getDocumentUrl(viewing.filePath)}
-                  download={viewing.fileName}
+                <button
+                  onClick={() => handleDownload(viewing)}
                   className="btn-primary px-3 py-1.5 text-sm"
                 >
                   <Download size={14} /> Download
-                </a>
+                </button>
                 <button
-                  onClick={() => setViewing(null)}
+                  onClick={closeViewer}
                   className="btn-secondary px-3 py-1.5 text-sm"
                 >
                   Close
                 </button>
               </div>
             </div>
-            <iframe
-              src={getDocumentUrl(viewing.filePath)}
-              title={viewing.fileName}
-              className="flex-1 w-full border-0"
-            />
+            {viewError ? (
+              <div className="flex-1 flex items-center justify-center p-8">
+                <div className="text-center">
+                  <AlertCircle size={32} className="mx-auto text-ink-300" />
+                  <p className="text-sm text-ink-500 mt-3">{viewError}</p>
+                </div>
+              </div>
+            ) : blobUrl ? (
+              <iframe
+                src={blobUrl}
+                title={viewing.fileName}
+                className="flex-1 w-full border-0"
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="h-8 w-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         </div>
       )}
