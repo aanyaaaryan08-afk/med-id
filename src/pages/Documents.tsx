@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, Badge } from '@/components/ui';
 import type { ConsultationDocument, DocumentCategory } from '@/lib/documents';
 import { DOCUMENT_CATEGORIES, downloadDocument, getDocumentBlobUrl } from '@/lib/documents';
+import { generateConsultationPdfBlob } from '@/lib/pdf';
+import { fetchItemsForConsultation } from '@/lib/consultationItems';
+import type { Consultation, Patient } from '@/types';
 import { FileText, Eye, Download, FileCog, AlertCircle, Stethoscope, Pill, FlaskConical, Syringe, FolderOpen } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<DocumentCategory, typeof FileText> = {
@@ -22,18 +25,64 @@ const CATEGORY_TONES: Record<DocumentCategory, 'teal' | 'blue' | 'green' | 'ambe
   other: 'slate',
 };
 
-export function Documents({ documents }: { documents: ConsultationDocument[] }) {
-  const [viewing, setViewing] = useState<ConsultationDocument | null>(null);
+interface DocumentEntry {
+  id: string;
+  fileName: string;
+  doctor: string;
+  date: string;
+  category: DocumentCategory;
+  kind: 'uploaded' | 'generated';
+  filePath?: string;
+  consultation?: Consultation;
+}
+
+export function Documents({
+  documents,
+  consultations,
+  patient,
+}: {
+  documents: ConsultationDocument[];
+  consultations: Consultation[];
+  patient: Patient;
+}) {
+  const [viewing, setViewing] = useState<DocumentEntry | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [viewError, setViewError] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState('');
 
+  const entries = useMemo<DocumentEntry[]>(() => {
+    const uploadedIds = new Set(documents.map((d) => d.consultationId));
+    const uploaded = documents.map((d) => ({
+      id: d.id,
+      fileName: d.fileName,
+      doctor: d.doctor,
+      date: d.consultationDate,
+      category: d.category,
+      kind: 'uploaded' as const,
+      filePath: d.filePath,
+    }));
+
+    const generated = consultations
+      .filter((c) => !uploadedIds.has(c.id))
+      .map((c) => ({
+        id: `gen-${c.id}`,
+        fileName: `MED-ID_Consultation_${patient.name.replace(/[^a-zA-Z0-9]/g, '_')}_${c.date.replace(/\s/g, '_')}.pdf`,
+        doctor: c.doctor,
+        date: c.date,
+        category: 'consultations' as DocumentCategory,
+        kind: 'generated' as const,
+        consultation: c,
+      }));
+
+    return [...uploaded, ...generated];
+  }, [documents, consultations, patient]);
+
   useEffect(() => {
     if (viewing) {
       setBlobUrl(null);
       setViewError('');
-      getDocumentBlobUrl(viewing.filePath)
+      loadBlob(viewing)
         .then(setBlobUrl)
         .catch(() => setViewError('Could not load this document. Please try downloading instead.'));
     }
@@ -43,6 +92,39 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewing]);
 
+  async function loadBlob(entry: DocumentEntry): Promise<string> {
+    if (entry.kind === 'uploaded' && entry.filePath) {
+      return getDocumentBlobUrl(entry.filePath);
+    }
+    if (entry.kind === 'generated' && entry.consultation) {
+      const items = await fetchItemsForConsultation(entry.consultation.id);
+      const { blob } = generateConsultationPdfBlob(patient, entry.consultation, items);
+      return URL.createObjectURL(blob);
+    }
+    throw new Error('Unknown document type');
+  }
+
+  async function handleDownloadDoc(entry: DocumentEntry): Promise<void> {
+    if (entry.kind === 'uploaded' && entry.filePath) {
+      await downloadDocument(entry.filePath, entry.fileName);
+      return;
+    }
+    if (entry.kind === 'generated' && entry.consultation) {
+      const items = await fetchItemsForConsultation(entry.consultation.id);
+      const { blob, fileName } = generateConsultationPdfBlob(patient, entry.consultation, items);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
+    }
+    throw new Error('Unknown document type');
+  }
+
   const closeViewer = () => {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     setBlobUrl(null);
@@ -50,11 +132,11 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
     setViewError('');
   };
 
-  const handleDownload = async (doc: ConsultationDocument) => {
+  const handleDownload = async (entry: DocumentEntry) => {
     setDownloadError('');
-    setDownloadingId(doc.id);
+    setDownloadingId(entry.id);
     try {
-      await downloadDocument(doc.filePath, doc.fileName);
+      await handleDownloadDoc(entry);
     } catch {
       setDownloadError('Could not download this document. Please try again.');
     } finally {
@@ -63,21 +145,21 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
   };
 
   const grouped = useMemo(() => {
-    const map = new Map<DocumentCategory, ConsultationDocument[]>();
-    for (const doc of documents) {
-      const bucket = map.get(doc.category) ?? [];
-      bucket.push(doc);
-      map.set(doc.category, bucket);
+    const map = new Map<DocumentCategory, DocumentEntry[]>();
+    for (const entry of entries) {
+      const bucket = map.get(entry.category) ?? [];
+      bucket.push(entry);
+      map.set(entry.category, bucket);
     }
     return map;
-  }, [documents]);
+  }, [entries]);
 
   const visibleCategories = useMemo(
     () => DOCUMENT_CATEGORIES.filter((cat) => grouped.has(cat.id) && (grouped.get(cat.id)?.length ?? 0) > 0),
     [grouped],
   );
 
-  if (documents.length === 0) {
+  if (entries.length === 0) {
     return (
       <div className="animate-fade-in">
         <div className="flex items-center gap-3 mb-6">
@@ -123,7 +205,7 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
 
       <div className="space-y-8">
         {visibleCategories.map((cat) => {
-          const catDocs = grouped.get(cat.id) ?? [];
+          const catEntries = grouped.get(cat.id) ?? [];
           const Icon = CATEGORY_ICONS[cat.id];
           const tone = CATEGORY_TONES[cat.id];
           return (
@@ -131,43 +213,43 @@ export function Documents({ documents }: { documents: ConsultationDocument[] }) 
               <div className="flex items-center gap-2 mb-4">
                 <Icon size={18} className="text-ink-500" />
                 <h2 className="font-display font-bold text-ink-800">{cat.label}</h2>
-                <Badge tone={tone}>{catDocs.length}</Badge>
+                <Badge tone={tone}>{catEntries.length}</Badge>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {catDocs.map((doc) => (
-                  <Card key={doc.id} hover className="p-5">
+                {catEntries.map((entry) => (
+                  <Card key={entry.id} hover className="p-5">
                     <div className="flex items-start gap-3">
                       <div className="grid place-items-center h-11 w-11 rounded-xl bg-red-50 text-red-500 shrink-0">
                         <FileText size={20} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-display font-bold text-ink-900 truncate" title={doc.fileName}>
-                          {doc.fileName.replace(/\.pdf$/, '')}
+                        <h3 className="font-display font-bold text-ink-900 truncate" title={entry.fileName}>
+                          {entry.fileName.replace(/\.pdf$/, '')}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge tone="teal">PDF</Badge>
                           <span className="text-xs text-ink-400">
-                            {doc.consultationDate || 'Date N/A'}
+                            {entry.date || 'Date N/A'}
                           </span>
                         </div>
-                        {doc.doctor && (
-                          <p className="text-xs text-ink-400 mt-1">Dr. {doc.doctor}</p>
+                        {entry.doctor && (
+                          <p className="text-xs text-ink-400 mt-1">Dr. {entry.doctor}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex gap-2 mt-4 pt-3 border-t border-ink-100">
                       <button
-                        onClick={() => setViewing(doc)}
+                        onClick={() => setViewing(entry)}
                         className="btn-secondary flex-1 px-3 py-2 text-sm"
                       >
                         <Eye size={15} /> View
                       </button>
                       <button
-                        onClick={() => handleDownload(doc)}
-                        disabled={downloadingId === doc.id}
+                        onClick={() => handleDownload(entry)}
+                        disabled={downloadingId === entry.id}
                         className="btn-primary flex-1 px-3 py-2 text-sm"
                       >
-                        {downloadingId === doc.id ? (
+                        {downloadingId === entry.id ? (
                           <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                         ) : (
                           <Download size={15} />

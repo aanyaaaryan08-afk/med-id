@@ -361,7 +361,7 @@ export default function App() {
               )}
               {page === 'medications' && <Medications medications={currentData.records.medications} />}
               {page === 'records' && <Records allergies={currentData.records.allergies} conditions={currentData.records.conditions} surgeries={currentData.records.surgeries} tests={currentData.records.tests} consultationItems={currentData.consultationItems} />}
-              {page === 'documents' && <Documents documents={currentData.documents} />}
+              {page === 'documents' && <Documents documents={currentData.documents} consultations={sortedConsultations} patient={currentData.records.patient} />}
               {page === 'doctor-access' && <DoctorAccess onAccess={handleDoctorAccess} />}
               {page === 'bracelet' && <Bracelet patient={currentData.records.patient} />}
             </>
