@@ -5,7 +5,7 @@ import { DOCUMENT_CATEGORIES, downloadDocument, getDocumentBlobUrl } from '@/lib
 import { generateConsultationPdfBlob } from '@/lib/pdf';
 import { fetchItemsForConsultation } from '@/lib/consultationItems';
 import type { Consultation, Patient } from '@/types';
-import { FileText, Eye, Download, FileCog, AlertCircle, Stethoscope, Pill, FlaskConical, Syringe, FolderOpen } from 'lucide-react';
+import { FileText, Eye, Download, FileCog, AlertCircle, Stethoscope, Pill, FlaskConical, Syringe, FolderOpen, ExternalLink } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<DocumentCategory, typeof FileText> = {
   consultations: Stethoscope,
@@ -50,6 +50,7 @@ export function Documents({
   const [viewError, setViewError] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState('');
+  const [pdfRendered, setPdfRendered] = useState(false);
 
   const entries = useMemo<DocumentEntry[]>(() => {
     const uploadedIds = new Set(documents.map((d) => d.consultationId));
@@ -82,6 +83,7 @@ export function Documents({
     if (viewing) {
       setBlobUrl(null);
       setViewError('');
+      setPdfRendered(false);
       loadBlob(viewing)
         .then(setBlobUrl)
         .catch(() => setViewError('Could not load this document. Please try downloading instead.'));
@@ -281,6 +283,13 @@ export function Documents({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
+                  onClick={() => window.open(blobUrl ?? '', '_blank')}
+                  disabled={!blobUrl}
+                  className="btn-secondary px-3 py-1.5 text-sm"
+                >
+                  <ExternalLink size={14} /> Open in new tab
+                </button>
+                <button
                   onClick={() => handleDownload(viewing)}
                   className="btn-primary px-3 py-1.5 text-sm"
                 >
@@ -302,11 +311,40 @@ export function Documents({
                 </div>
               </div>
             ) : blobUrl ? (
-              <iframe
-                src={blobUrl}
-                title={viewing.fileName}
-                className="flex-1 w-full border-0"
-              />
+              <div className="flex-1 w-full overflow-hidden relative bg-ink-50">
+                <object
+                  data={blobUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  onLoad={() => setPdfRendered(true)}
+                >
+                  <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                    <FileCog size={40} className="text-ink-300" />
+                    <p className="text-sm text-ink-500">
+                      Your browser cannot display this PDF inline.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => window.open(blobUrl, '_blank')}
+                        className="btn-primary px-4 py-2 text-sm"
+                      >
+                        <ExternalLink size={16} /> Open in new tab
+                      </button>
+                      <button
+                        onClick={() => handleDownload(viewing)}
+                        className="btn-secondary px-4 py-2 text-sm"
+                      >
+                        <Download size={16} /> Download
+                      </button>
+                    </div>
+                  </div>
+                </object>
+                {!pdfRendered && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ink-50/80 pointer-events-none">
+                    <div className="h-8 w-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="h-8 w-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
