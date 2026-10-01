@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { LogoWordmark } from '@/components/Logo';
-import { createPatient, type RegistrationData } from '@/lib/patients';
+import { createPatient, type RegistrationData, type ConditionEntry } from '@/lib/patients';
 import { requestOtp, verifyOtp, maskPhone } from '@/lib/otp';
-import { ArrowRight, ArrowLeft, User, Calendar, Fingerprint, Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Stethoscope, Phone, Smartphone, ShieldAlert, CircleCheck as CheckCircle2, Copy, Check, UserPlus, KeyRound, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ArrowLeft, User, Calendar, Fingerprint, Droplet, TriangleAlert as AlertTriangle, Pill, Heart, Stethoscope, Phone, Smartphone, ShieldAlert, CircleCheck as CheckCircle2, Copy, Check, UserPlus, KeyRound, ShieldCheck, Plus } from 'lucide-react';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -13,7 +13,7 @@ const emptyForm: RegistrationData = {
   bloodGroup: '',
   allergies: '',
   currentMedications: '',
-  medicalConditions: '',
+  medicalConditions: [],
   previousSurgeries: '',
   personalPhone: '',
   emergencyContactName: '',
@@ -21,6 +21,12 @@ const emptyForm: RegistrationData = {
   emergencyContactPhone: '',
   emergencyInfo: '',
 };
+
+const conditionStatuses: { value: 'Active' | 'Managed' | 'Resolved'; label: string }[] = [
+  { value: 'Active', label: 'Active' },
+  { value: 'Managed', label: 'Managed' },
+  { value: 'Resolved', label: 'Resolved' },
+];
 
 const steps = [
   { id: 0, label: 'Verify', icon: Smartphone },
@@ -134,7 +140,7 @@ export function Register({
     setOtpLoading(false);
   };
 
-  const update = (field: keyof RegistrationData, value: string) => {
+  const update = (field: Exclude<keyof RegistrationData, 'medicalConditions'>, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: '' }));
   };
@@ -518,10 +524,67 @@ export function Register({
                   </div>
                 </Field>
 
-                <Field label="Major Medical Conditions" hint="Comma-separated">
-                  <div className="relative">
-                    <Heart size={18} className="absolute left-3.5 top-3 text-ink-400" />
-                    <textarea className="input pl-11 min-h-[72px] resize-y" value={form.medicalConditions} onChange={(e) => update('medicalConditions', e.target.value)} placeholder="e.g. Diabetes, Hypertension, or None" />
+                <Field label="Major Medical Conditions" hint="Add each condition and select its current status">
+                  <div className="space-y-3">
+                    {form.medicalConditions.length === 0 && (
+                      <p className="text-xs text-ink-400 py-3 text-center rounded-xl bg-ink-50 border border-ink-100">
+                        No conditions added. Click below to add one.
+                      </p>
+                    )}
+                    {form.medicalConditions.map((cond, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Heart size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                          <input
+                            className="input pl-11"
+                            value={cond.name}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setForm((f) => ({
+                                ...f,
+                                medicalConditions: f.medicalConditions.map((c, i) => i === idx ? { ...c, name: value } : c),
+                              }));
+                            }}
+                            placeholder="e.g. Diabetes, Hypertension"
+                          />
+                        </div>
+                        <select
+                          className="input w-32 shrink-0"
+                          value={cond.status}
+                          onChange={(e) => {
+                            const value = e.target.value as ConditionEntry['status'];
+                            setForm((f) => ({
+                              ...f,
+                              medicalConditions: f.medicalConditions.map((c, i) => i === idx ? { ...c, status: value } : c),
+                            }));
+                          }}
+                        >
+                          {conditionStatuses.map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({
+                            ...f,
+                            medicalConditions: f.medicalConditions.filter((_, i) => i !== idx),
+                          }))}
+                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 shrink-0"
+                        >
+                          <AlertTriangle size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({
+                        ...f,
+                        medicalConditions: [...f.medicalConditions, { name: '', status: 'Active' as const }],
+                      }))}
+                      className="btn-ghost text-sm text-teal-600 hover:bg-teal-50 px-3 py-2"
+                    >
+                      <Plus size={14} /> Add Condition
+                    </button>
                   </div>
                 </Field>
 
@@ -581,7 +644,7 @@ export function Register({
                   <ReviewItem label="Blood Group" value={form.bloodGroup} />
                   <ReviewItem label="Known Allergies" value={form.allergies || 'None'} />
                   <ReviewItem label="Current Medications" value={form.currentMedications || 'None'} />
-                  <ReviewItem label="Medical Conditions" value={form.medicalConditions || 'None'} />
+                  <ReviewItem label="Medical Conditions" value={form.medicalConditions.length > 0 ? form.medicalConditions.map((c) => `${c.name} (${c.status})`).join(', ') : 'None'} />
                   <ReviewItem label="Previous Surgeries" value={form.previousSurgeries || 'None'} />
                   <ReviewItem label="Personal / OTP Phone" value={form.personalPhone ? '*****' + form.personalPhone.slice(-5) : 'Not provided'} />
                   <ReviewItem label="Emergency Contact" value={`${form.emergencyContactName} (${form.emergencyContactRelation})`} />

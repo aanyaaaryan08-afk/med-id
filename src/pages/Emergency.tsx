@@ -104,7 +104,7 @@ export function EmergencyPage({
               ) : (
                 allergies.map((a) => (
                   <Badge key={a.id} tone="red">
-                    {a.name} · {a.severity}
+                    {a.name}
                   </Badge>
                 ))
               )}

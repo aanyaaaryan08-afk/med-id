@@ -105,9 +105,6 @@ export function Dashboard({
               allergies.map((a) => (
                 <div key={a.id} className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-ink-800 break-words">{a.name}</span>
-                  <Badge tone={a.severity === 'Severe' ? 'red' : a.severity === 'Moderate' ? 'amber' : 'slate'} className="shrink-0">
-                    {a.severity}
-                  </Badge>
                 </div>
               ))
             )}

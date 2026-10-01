@@ -132,9 +132,6 @@ function AllergiesTab({ allergies }: { allergies: Allergy[] }) {
               </div>
               <h3 className="font-display font-bold text-ink-900 truncate">{a.name}</h3>
             </div>
-            <Badge tone={a.severity === 'Severe' ? 'red' : a.severity === 'Moderate' ? 'amber' : 'slate'} className="shrink-0">
-              {a.severity}
-            </Badge>
           </div>
           {a.reaction && <p className="text-sm text-ink-500 mt-3">Reaction: {a.reaction}</p>}
         </Card>

@@ -163,6 +163,11 @@ function genId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+export interface ConditionEntry {
+  name: string;
+  status: 'Active' | 'Managed' | 'Resolved';
+}
+
 export interface RegistrationData {
   name: string;
   dob: string;
@@ -170,7 +175,7 @@ export interface RegistrationData {
   bloodGroup: string;
   allergies: string;
   currentMedications: string;
-  medicalConditions: string;
+  medicalConditions: ConditionEntry[];
   previousSurgeries: string;
   personalPhone: string;
   emergencyContactName: string;
@@ -236,14 +241,14 @@ export async function createPatient(data: RegistrationData): Promise<string> {
     await supabase.from('patient_medications').insert(rows);
   }
 
-  const condNames = parseLines(data.medicalConditions);
-  if (condNames.length > 0) {
-    const rows = condNames.map((name) => ({
+  const condEntries = data.medicalConditions.filter((c) => c.name.trim().length > 0);
+  if (condEntries.length > 0) {
+    const rows = condEntries.map((c) => ({
       id: genId('con'),
       patient_med_id: medId,
-      name,
+      name: c.name.trim(),
       diagnosed_date: '',
-      status: 'Active' as const,
+      status: c.status,
       notes: '',
     }));
     await supabase.from('patient_conditions').insert(rows);
@@ -377,25 +382,72 @@ export async function addTest(medId: string, name: string, date: string, type: s
 }
 
 export async function syncItemsToCategoryTables(medId: string, items: ConsultationItem[]): Promise<void> {
-  for (const item of items) {
+  // Only confirmed medical-history categories should be synced.
+  // recommendation and follow_up are advisory, not confirmed history.
+  const syncable = items.filter(
+    (item) => item.category !== 'recommendation' && item.category !== 'follow_up' && item.category !== 'other',
+  );
+
+  // Fetch existing records to prevent duplicates
+  const [allergiesRes, conditionsRes, medsRes, surgeriesRes, testsRes] = await Promise.all([
+    supabase.from('patient_allergies').select('name').eq('patient_med_id', medId),
+    supabase.from('patient_conditions').select('name').eq('patient_med_id', medId),
+    supabase.from('patient_medications').select('name').eq('patient_med_id', medId),
+    supabase.from('patient_surgeries').select('name').eq('patient_med_id', medId),
+    supabase.from('patient_tests').select('name,date').eq('patient_med_id', medId),
+  ]);
+
+  const existingAllergies = new Set(((allergiesRes.data as Record<string, unknown>[]) ?? []).map((r) => (r.name as string).toLowerCase()));
+  const existingConditions = new Set(((conditionsRes.data as Record<string, unknown>[]) ?? []).map((r) => (r.name as string).toLowerCase()));
+  const existingMeds = new Set(((medsRes.data as Record<string, unknown>[]) ?? []).map((r) => (r.name as string).toLowerCase()));
+  const existingSurgeries = new Set(((surgeriesRes.data as Record<string, unknown>[]) ?? []).map((r) => (r.name as string).toLowerCase()));
+  const existingTests = new Set(((testsRes.data as Record<string, unknown>[]) ?? []).map((r) => `${(r.name as string).toLowerCase()}|${(r.date as string) || ''}`));
+
+  for (const item of syncable) {
+    const nameLower = item.name.toLowerCase();
     switch (item.category) {
       case 'allergy':
-        await addAllergy(medId, item.name);
+        if (!existingAllergies.has(nameLower)) {
+          await addAllergy(medId, item.name);
+          existingAllergies.add(nameLower);
+        }
         break;
       case 'diagnosis':
-      case 'condition':
-        await addCondition(medId, item.name, item.details);
+      case 'condition': {
+        if (!existingConditions.has(nameLower)) {
+          await supabase.from('patient_conditions').insert({
+            id: genId('con'),
+            patient_med_id: medId,
+            name: item.name,
+            diagnosed_date: item.date,
+            status: item.status || 'Active',
+            notes: item.details,
+          });
+          existingConditions.add(nameLower);
+        }
         break;
+      }
       case 'medication':
-        await addMedication(medId, item.name, item.details, item.doctor);
+        if (!existingMeds.has(nameLower)) {
+          await addMedication(medId, item.name, item.details, item.doctor);
+          existingMeds.add(nameLower);
+        }
         break;
       case 'procedure':
-        await addSurgery(medId, item.name, item.date, '', item.doctor, item.details);
+        if (!existingSurgeries.has(nameLower)) {
+          await addSurgery(medId, item.name, item.date, '', item.doctor, item.details);
+          existingSurgeries.add(nameLower);
+        }
         break;
       case 'imaging':
-      case 'lab_test':
-        await addTest(medId, item.name, item.date, item.category === 'imaging' ? 'Radiology' : 'Laboratory', item.details, (item.status as Test['status']) || 'Pending');
+      case 'lab_test': {
+        const testKey = `${nameLower}|${item.date}`;
+        if (!existingTests.has(testKey)) {
+          await addTest(medId, item.name, item.date, item.category === 'imaging' ? 'Radiology' : 'Laboratory', item.details, (item.status as Test['status']) || 'Pending');
+          existingTests.add(testKey);
+        }
         break;
+      }
       default:
         break;
     }
