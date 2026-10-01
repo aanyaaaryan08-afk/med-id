@@ -50,10 +50,7 @@ function buildPdf(
   doc.setFont('helvetica', 'normal');
   doc.text('Consultation Report', cfg.margin, 50);
   doc.setFontSize(9);
-  const generatedDateStr = consultation.createdAt
-    ? new Date(consultation.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    : consultation.date;
-  doc.text(`Generated: ${generatedDateStr}`, cfg.pageWidth - cfg.margin, 32, { align: 'right' });
+  doc.text(`Generated: ${consultation.date}`, cfg.pageWidth - cfg.margin, 32, { align: 'right' });
 
   y = 100;
 
