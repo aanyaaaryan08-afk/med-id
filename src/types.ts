@@ -99,6 +99,7 @@ export interface Consultation {
   tests: string;
   notes: string;
   followUp: string;
+  createdAt?: string;
 }
 
 export type ItemCategory =

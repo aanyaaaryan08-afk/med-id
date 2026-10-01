@@ -235,7 +235,9 @@ export function Documents({
                           </span>
                         </div>
                         {entry.doctor && (
-                          <p className="text-xs text-ink-400 mt-1">Dr. {entry.doctor}</p>
+                          <p className="text-xs text-ink-400 mt-1">
+                            {entry.doctor.match(/^dr\.?\s/i) ? entry.doctor : `Dr. ${entry.doctor}`}
+                          </p>
                         )}
                       </div>
                     </div>

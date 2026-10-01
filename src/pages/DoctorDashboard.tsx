@@ -11,7 +11,7 @@ import { uploadDocument } from '@/lib/documents';
 import type { Consultation, ItemCategory } from '@/types';
 import { CATEGORY_OPTIONS } from '@/types';
 import { insertConsultationItems } from '@/lib/consultationItems';
-import { Search, Plus, X, Stethoscope, Calendar, Pill, Droplet, Heart, User, Phone, Mail, MapPin, Fingerprint, LogOut, UserCog, Siren, Menu, ArrowLeft, Smartphone, KeyRound, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, FileDown, Trash2 } from 'lucide-react';
+import { Search, Plus, X, Stethoscope, Calendar, Pill, Droplet, Heart, User, Phone, Mail, MapPin, Fingerprint, LogOut, UserCog, Siren, Menu, ArrowLeft, Smartphone, KeyRound, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, FileDown, Trash2, Eye, ExternalLink } from 'lucide-react';
 
 const emptyForm = {
   doctor: '',
@@ -71,6 +71,8 @@ export function DoctorDashboard({
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [previewPdf, setPreviewPdf] = useState<{ url: string; fileName: string } | null>(null);
+  const [pdfRendered, setPdfRendered] = useState(false);
 
   const startCountdown = () => {
     setResendCountdown(30);
@@ -284,6 +286,25 @@ export function DoctorDashboard({
     } catch {
       setErrors({ form: 'Failed to generate PDF report.' });
     }
+  };
+
+  const handlePreviewPdf = async (c: Consultation) => {
+    if (!patientRecords) return;
+    try {
+      const items = await fetchItemsForConsultation(c.id);
+      const { blob, fileName } = generateConsultationPdfBlob(patientRecords.patient, c, items);
+      const url = URL.createObjectURL(blob);
+      setPdfRendered(false);
+      setPreviewPdf({ url, fileName });
+    } catch {
+      setErrors({ form: 'Failed to generate PDF preview.' });
+    }
+  };
+
+  const closePreview = () => {
+    if (previewPdf) URL.revokeObjectURL(previewPdf.url);
+    setPreviewPdf(null);
+    setPdfRendered(false);
   };
 
   const closeForm = () => {
@@ -672,12 +693,18 @@ export function DoctorDashboard({
                           {c.notes !== 'No additional notes.' && (
                             <p className="text-sm text-ink-600 mt-2 pt-2 border-t border-ink-100 break-words">{c.notes}</p>
                           )}
-                          <div className="mt-3 pt-2 border-t border-ink-100">
+                          <div className="mt-3 pt-2 border-t border-ink-100 flex gap-2">
+                            <button
+                              onClick={() => handlePreviewPdf(c)}
+                              className="btn-secondary px-3 py-1.5 text-xs"
+                            >
+                              <Eye size={14} /> Preview PDF
+                            </button>
                             <button
                               onClick={() => handleDownloadPdf(c)}
                               className="btn-secondary px-3 py-1.5 text-xs"
                             >
-                              <FileDown size={14} /> Download PDF Report
+                              <FileDown size={14} /> Download PDF
                             </button>
                           </div>
                         </div>
@@ -689,6 +716,67 @@ export function DoctorDashboard({
             )}
           </main>
         </div>
+
+        {/* PDF preview modal */}
+        {previewPdf && createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm animate-fade-in-fast"
+            onClick={closePreview}
+          >
+            <div
+              className="relative w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-card-hover overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-ink-100">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileDown size={18} className="text-red-500 shrink-0" />
+                  <span className="text-sm font-semibold text-ink-800 truncate">{previewPdf.fileName}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => window.open(previewPdf.url, '_blank')}
+                    className="btn-secondary px-3 py-1.5 text-sm"
+                  >
+                    <ExternalLink size={14} /> Open in new tab
+                  </button>
+                  <button
+                    onClick={closePreview}
+                    className="btn-secondary px-3 py-1.5 text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 w-full overflow-hidden relative bg-ink-50">
+                <object
+                  data={previewPdf.url}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  onLoad={() => setPdfRendered(true)}
+                >
+                  <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                    <FileDown size={40} className="text-ink-300" />
+                    <p className="text-sm text-ink-500">
+                      Your browser cannot display this PDF inline.
+                    </p>
+                    <button
+                      onClick={() => window.open(previewPdf.url, '_blank')}
+                      className="btn-primary px-4 py-2 text-sm"
+                    >
+                      <ExternalLink size={16} /> Open in new tab
+                    </button>
+                  </div>
+                </object>
+                {!pdfRendered && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ink-50/80 pointer-events-none">
+                    <div className="h-8 w-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* Add consultation modal */}
         {showForm && createPortal(

@@ -13,6 +13,7 @@ function rowToConsultation(row: Record<string, unknown>): Consultation {
     tests: row.tests as string,
     notes: row.notes as string,
     followUp: row.follow_up as string,
+    createdAt: (row.created_at as string) || undefined,
   };
 }
 
